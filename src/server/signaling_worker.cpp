@@ -189,6 +189,9 @@ void SignalingWorker::ProcessRtcMsg() {
     switch (msg->cmdno) {
         case CMDNO_PUSH:
         case CMDNO_PULL:
+        case CMDNO_STOPPUSH:
+        case CMDNO_STOPPULL:
+        case CMDNO_ANSWER:
             ResponseServerOffer(msg);
             break;
         default:
@@ -412,8 +415,6 @@ int SignalingWorker::ProcessRequest(TcpConnection* c,
         return -1;
     }
    
-    int ret = 0;
-
     int cmdno;
     try {
         cmdno = root["cmdno"].asInt();
@@ -422,53 +423,24 @@ int SignalingWorker::ProcessRequest(TcpConnection* c,
         RTC_LOG(LS_WARNING) << "no cmdno field in body, log_id: " << xh->log_id;
         return -1;
     }
-    
+
+    // PUSH/PULL/STOP/ANSWER 均异步处理：投递到 rtc_worker 后由
+    // ResponseServerOffer 原路回传真实处理结果（含 offer），此处不写立即响应
     switch (cmdno) {
         case CMDNO_PUSH:
             return ProcessPush(cmdno, c, root, xh->log_id);
         case CMDNO_PULL:
             return ProcessPull(cmdno, c, root, xh->log_id);
         case CMDNO_STOPPUSH:
-            ret = ProcessStopPush(cmdno, c, root, xh->log_id);
-            break; 
+            return ProcessStopPush(cmdno, c, root, xh->log_id);
         case CMDNO_STOPPULL:
-            ret = ProcessStopPull(cmdno, c, root, xh->log_id);
-            break; 
+            return ProcessStopPull(cmdno, c, root, xh->log_id);
         case CMDNO_ANSWER:
-            ret = ProcessAnswer(cmdno, c, root, xh->log_id);
-            break;
+            return ProcessAnswer(cmdno, c, root, xh->log_id);
         default:
-            ret = -1;
             RTC_LOG(LS_WARNING) << "unknown cmdno: " << cmdno << ", log_id: " << xh->log_id;
-            break;
+            return -1;
     }
-    
-    // 返回处理结果
-    char* buf = (char*)zmalloc(XHEAD_SIZE + MAX_RES_BUF);
-    xhead_t* res_xh = (xhead_t*)buf;
-    memcpy(res_xh, header.data(), header.size());
-    
-    Json::Value res_root;
-    if (0 == ret) {
-        res_root["err_no"] = 0;
-        res_root["err_msg"] = "success";
-    } else {
-        res_root["err_no"] = -1;
-        res_root["err_msg"] = "process error";
-    }
-    
-    Json::StreamWriterBuilder write_builder;
-    write_builder.settings_["indentation"] = "";
-    std::string json_data = Json::writeString(write_builder, res_root);
-    RTC_LOG(LS_INFO) << "response body: " << json_data;
-    
-    res_xh->body_len = json_data.size();
-    snprintf(buf + XHEAD_SIZE, MAX_RES_BUF, "%s", json_data.c_str());
-    
-    rtc::Slice reply(buf, XHEAD_SIZE + res_xh->body_len);
-    AddReply(c, reply);
-
-    return 0;
 }
 
 int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
@@ -547,12 +519,12 @@ int SignalingWorker::ProcessPull(int cmdno, TcpConnection* c,
     return g_rtc_server->SendRtcMsg(msg);
 }
 
-int SignalingWorker::ProcessStopPush(int cmdno, TcpConnection* /*c*/,
+int SignalingWorker::ProcessStopPush(int cmdno, TcpConnection* c,
         const Json::Value& root, uint32_t log_id)
 {
     uint64_t uid;
     std::string stream_name;
-    
+
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
@@ -561,26 +533,29 @@ int SignalingWorker::ProcessStopPush(int cmdno, TcpConnection* /*c*/,
             << "log_id: " << log_id;
         return -1;
     }
-    
-    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid 
-        << "] stream_name[" << stream_name 
+
+    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
+        << "] stream_name[" << stream_name
         << "] signaling server send stop push request";
-    
+
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
     msg->cmdno = cmdno;
     msg->uid = uid;
     msg->stream_name = stream_name;
     msg->log_id = log_id;
+    msg->worker = this;
+    msg->conn = c;
+    msg->fd = c->fd;
 
     return g_rtc_server->SendRtcMsg(msg);
 }
 
-int SignalingWorker::ProcessStopPull(int cmdno, TcpConnection* /*c*/,
+int SignalingWorker::ProcessStopPull(int cmdno, TcpConnection* c,
         const Json::Value& root, uint32_t log_id)
 {
     uint64_t uid;
     std::string stream_name;
-    
+
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
@@ -589,28 +564,31 @@ int SignalingWorker::ProcessStopPull(int cmdno, TcpConnection* /*c*/,
             << "log_id: " << log_id;
         return -1;
     }
-    
-    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid 
-        << "] stream_name[" << stream_name 
+
+    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
+        << "] stream_name[" << stream_name
         << "] signaling server send stop pull request";
-    
+
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
     msg->cmdno = cmdno;
     msg->uid = uid;
     msg->stream_name = stream_name;
     msg->log_id = log_id;
+    msg->worker = this;
+    msg->conn = c;
+    msg->fd = c->fd;
 
     return g_rtc_server->SendRtcMsg(msg);
 }
 
-int SignalingWorker::ProcessAnswer(int cmdno, TcpConnection* /*c*/,
+int SignalingWorker::ProcessAnswer(int cmdno, TcpConnection* c,
         const Json::Value& root, uint32_t log_id)
 {
     uint64_t uid;
     std::string stream_name;
     std::string answer;
     std::string stream_type;
-    
+
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
@@ -621,12 +599,12 @@ int SignalingWorker::ProcessAnswer(int cmdno, TcpConnection* /*c*/,
             << "log_id: " << log_id;
         return -1;
     }
-    
-    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid 
-        << "] stream_name[" << stream_name 
-        << "] answer[" << answer 
+
+    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
+        << "] stream_name[" << stream_name
+        << "] answer[" << answer
         << "] stream_type[" << stream_type << "] signaling server send answer request";
-    
+
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
     msg->cmdno = cmdno;
     msg->uid = uid;
@@ -634,6 +612,9 @@ int SignalingWorker::ProcessAnswer(int cmdno, TcpConnection* /*c*/,
     msg->sdp = answer;
     msg->stream_type = stream_type;
     msg->log_id = log_id;
+    msg->worker = this;
+    msg->conn = c;
+    msg->fd = c->fd;
 
     return g_rtc_server->SendRtcMsg(msg);
 }

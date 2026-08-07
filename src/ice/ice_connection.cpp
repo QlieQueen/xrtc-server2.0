@@ -240,6 +240,9 @@ void IceConnection::UpdateState(int64_t now) {
             << "ms without a response";
 
         set_write_state(STATE_WRITE_TIMEOUT);
+        // TIMEOUT 后连接不再可用但对象仍挂在 IceController 三集合中占 ping 槽位，
+        // 需 fail_and_destroy 触发 signal_connection_destroy → IceController 清理 → delete this
+        FailAndDestroy();
     }
 
     UpdateReceiving(now);
@@ -336,7 +339,9 @@ void IceConnection::OnReadPacket(const char* buf, size_t len, int64_t ts) {
     const Candidate& remote = remote_candidate_;
     if (!port_->GetStunMessage(buf, len, remote.address, &stun_msg, &remote_ufrag)) {
         // 这个不是stun包，可能是其它的比如dtls或者rtp包
-        SignalReadPacket(this, buf, len, ts); 
+        // 记录非 STUN 数据（RTP/DTLS）到达时间，供 receiving 判断
+        last_data_received_ = rtc::TimeMillis();
+        SignalReadPacket(this, buf, len, ts);
     } else if (!stun_msg) {
     } else { // stun message
         switch (stun_msg->type()) {
@@ -353,6 +358,8 @@ void IceConnection::OnReadPacket(const char* buf, size_t len, int64_t ts) {
                     RTC_LOG(LS_INFO) << ToString() << ": Received "
                         << StunMethodToString(stun_msg->type())
                         << ", id=" << rtc::hex_encode(stun_msg->transaction_id());
+                    // 记录 STUN binding request 到达时间，供 receiving 判断
+                    last_ping_received_ = rtc::TimeMillis();
                     HandleStunBindingRequest(stun_msg.get());
                 }
                 break;

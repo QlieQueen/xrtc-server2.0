@@ -17,6 +17,8 @@
 
 #include "ice/udp_port.h"
 
+#include <unistd.h>
+
 #include <sstream>
 
 #include <rtc_base/logging.h>
@@ -40,6 +42,11 @@ UDPPort::UDPPort(EventLoop* el,
 }
 
 UDPPort::~UDPPort() {
+    // 关闭 UDP socket fd，防止每次推拉流结束泄漏 fd 导致端口耗尽
+    if (socket_ != -1) {
+        close(socket_);
+        socket_ = -1;
+    }
 }
 
 std::string ComputeFoundation(const std::string& type,
@@ -108,11 +115,13 @@ IceConnection* UDPPort::CreateConnection(const Candidate& remote_candidate) {
             std::make_pair(conn->remote_candidate().address, conn));
     if (ret.second == false && ret.first->second != conn) {
         RTC_LOG(LS_WARNING) << ToString() << ": create ice connection on "
-            << "an existing remote address, addr: " 
+            << "an existing remote address, addr: "
             << conn->remote_candidate().address.ToString();
+        // 先 destroy 旧连接（触发 signal_connection_destroy → IceController 清理 → delete this），
+        // 再替换 map 指针，否则旧连接变成僵尸永久泄漏
+        IceConnection* old_conn = ret.first->second;
+        old_conn->Destroy();
         ret.first->second = conn;
-
-        //todo
     }
 
     return conn;

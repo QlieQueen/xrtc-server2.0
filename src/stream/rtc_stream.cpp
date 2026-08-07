@@ -53,7 +53,10 @@ void RtcStream::OnConnectionState(PeerConnection*, PeerConnectionState state) {
         << " to " << state;
     state_ = state;
     
-    if (state_ == PeerConnectionState::kConnected) {
+    // kConnected 或 kFailed 都决定不再需要 30s ICE 超时定时器：
+    // kFailed 已走 OnStreamException 销毁流，无需等超时二次触发
+    if (state_ == PeerConnectionState::kConnected
+            || state_ == PeerConnectionState::kFailed) {
         if (ice_timeout_watcher_) {
             el->DeleteTimer(ice_timeout_watcher_);
             ice_timeout_watcher_ = nullptr;

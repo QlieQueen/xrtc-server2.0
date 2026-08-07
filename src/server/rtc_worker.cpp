@@ -178,31 +178,61 @@ void RtcWorker::ProcessAnswer(std::shared_ptr<RtcMsg> msg) {
     int ret = rtc_stream_mgr_->SetAnswer(msg->uid, msg->stream_name,
             msg->sdp, msg->stream_type, msg->log_id);
      
+    if (ret != 0) {
+        msg->err_no = -1;
+    }
+
     RTC_LOG(LS_INFO) << "rtc worker process answer, uid: " << msg->uid
         << ", stream_name: " << msg->stream_name
         << ", worker_id: " << worker_id_
         << ", log_id: " << msg->log_id
         << ", ret: " << ret;
+
+    // 回传处理结果给 signaling worker，使客户端能收到真实结果的 TCP 响应
+    SignalingWorker* worker = (SignalingWorker*)msg->worker;
+    if (worker) {
+        worker->SendRtcMsg(msg);
+    }
 }
 
 void RtcWorker::ProcessStopPush(std::shared_ptr<RtcMsg> msg) {
     int ret = rtc_stream_mgr_->StopPush(msg->uid, msg->stream_name);
         
+    if (ret != 0) {
+        msg->err_no = -1;
+    }
+
     RTC_LOG(LS_INFO) << "rtc worker process stop push, uid: " << msg->uid
         << ", stream_name: " << msg->stream_name
         << ", worker_id: " << worker_id_
         << ", log_id: " << msg->log_id
         << ", ret: " << ret;
+
+    // 回传处理结果给 signaling worker，使客户端能收到真实结果的 TCP 响应
+    SignalingWorker* worker = (SignalingWorker*)msg->worker;
+    if (worker) {
+        worker->SendRtcMsg(msg);
+    }
 }
 
 void RtcWorker::ProcessStopPull(std::shared_ptr<RtcMsg> msg) {
     int ret = rtc_stream_mgr_->StopPull(msg->uid, msg->stream_name);
+
+    if (ret != 0) {
+        msg->err_no = -1;
+    }
 
     RTC_LOG(LS_INFO) << "rtc worker process stop pull, uid: " << msg->uid
         << ", stream_name: " << msg->stream_name
         << ", worker_id: " << worker_id_
         << ", log_id: " << msg->log_id
         << ", ret: " << ret;
+
+    // 回传处理结果给 signaling worker，使客户端能收到真实结果的 TCP 响应
+    SignalingWorker* worker = (SignalingWorker*)msg->worker;
+    if (worker) {
+        worker->SendRtcMsg(msg);
+    }
 }
 
 void RtcWorker::ProcessRtcMsg() {
