@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 WebRTC 媒体服务 — C++ 实现。通过 XRPC 协议（TCP 9000）接收 `signaling`（Go 信令服务）的推拉流命令，完成 ICE 协商、DTLS-SRTP 传输、媒体流转发。这是 `/home/ydqun/workspace/lession/CLAUDE.md` 所述 Go 信令服务的**南向对端**。
 
 - **上游信令**：`/home/ydqun/workspace/lession/signaling`（Go，HTTP 8080/8081 → XRPC TCP → 本服务）
-- **基础库依赖**：`rtcbase`（WebRTC rtc_base 分支，提供 `rtc_base/*` 头文件和 `librtcbase.a`）
+- **基础库依赖**：`rtcbase`（WebRTC rtc_base 精简分支，提供 `rtc_base/*` 头文件和 `librtcbase.a`），独立仓库：`git@github.com:QlieQueen/rtcbase.git`
 
 ## 开发命令
 
@@ -27,6 +27,18 @@ ln -s /home/ydqun/workspace/lession/rtcbase_v2.0 /home/ydqun/workspace/lession/r
 ```
 
 链接的库都在 `third_party/lib/*.a`（yaml-cpp、ev、jsoncpp、openssl、srtp2、absl）与 `../rtcbase/out/librtcbase.a`，全部静态链接；因预编译库非 `-fPIC`，链接时加了 `-no-pie`。
+
+### rtcbase 依赖关系（WebRTC 基础组件）
+
+**rtcbase** 是 WebRTC `rtc_base` 的精简分支，本工程 20 个 `rtc_base/*` 头 + 2 个 `api/*` 头全部来自它，**编译和链接都强依赖 `../rtcbase`**：
+
+| 依赖 | 路径 | 说明 |
+|------|------|------|
+| 头文件 | `../rtcbase/src/rtc_base/*.h`、`../rtcbase/src/api/*.h` | `logging.h`(RTC_LOG)、`rtc_certificate.h`/`rtc_certificate_generator.h`、`time_utils.h`(TimeMillis)、`zmalloc.h`、`slice.h`、`buffer.h`、`copy_on_write_buffer.h`、`socket_address.h` 等 |
+| 静态库 | `../rtcbase/out/librtcbase.a`（33MB） | 提供 `rtc::*` 符号实现，CMake `target_link_libraries` 引入 |
+| 仓库 | `git@github.com:QlieQueen/rtcbase.git` | 独立维护，需另行 clone/更新 |
+
+rtcbase 目录结构：`src/{rtc_base, api, common_video, modules, system_wrappers}`。若 `../rtcbase` 不存在或与版本不匹配，整个工程编译失败；升级 rtcbase 后需重编 `librtcbase.a` 并同步 `third_party/include` 中的对应头文件。
 
 ## 架构
 
