@@ -1,0 +1,36 @@
+/***************************************************************************
+ * 
+ * Copyright (c) str2num.com, Inc. All Rights Reserved
+ * $Id$ 
+ * 
+ **************************************************************************/
+ 
+ 
+ 
+/**
+ * @file stream_params.cpp
+ * @author str2num
+ * @version $Revision$ 
+ * @brief 
+ *  
+ **/
+
+#include "pc/stream_params.h"
+
+namespace xrtc {
+
+SsrcGroup::SsrcGroup(const std::string& semantics, const std::vector<uint32_t>& ssrcs) :
+    semantics(semantics), ssrcs(ssrcs) {}
+
+bool StreamParams::HasSsrc(uint32_t ssrc) {
+    for (auto item : ssrcs) {
+        if (item == ssrc) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace xrtc
+
+
