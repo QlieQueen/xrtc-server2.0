@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 
 project(xrtcserver)
 
+# 导出 compile_commands.json，供 VSCode C/C++ 扩展 IntelliSense 使用
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_definitions("-g -pipe -W -Wall -fPIC -std=gnu++14 -DWEBRTC_POSIX
     -DWEBRTC_LINUX")
 
