@@ -103,8 +103,14 @@ void PeerConnection::OnRtcpPacketReceived(TransportController*,
 }
 
 int PeerConnection::Init(rtc::RTCCertificate* certificate) {
-    certificate_ = certificate;
-    transport_controller_->SetLocalCertificate(certificate);
+    if (certificate) {
+        certificate_ = certificate;
+        transport_controller_->SetLocalCertificate(certificate);
+    } else { // 不开启DTLS
+        is_dtls_ = false;
+        transport_controller_->set_dtls(is_dtls_);
+    }
+
     return 0;
 }
 
@@ -124,7 +130,7 @@ void PeerConnection::Destroy() {
 }
 
 std::string PeerConnection::CreateOffer(const RTCOfferAnswerOptions& options) {
-    if (options.dtls_on && !certificate_) {
+    if (is_dtls_ && !certificate_) {
         RTC_LOG(LS_WARNING) << "certificate is null";
         return "";
     }

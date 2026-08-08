@@ -40,12 +40,14 @@ public:
     ~RtcStreamManager();
     
     int CreatePushStream(uint64_t uid, const std::string& stream_name,
-            bool audio, bool video, uint32_t log_id,
+            bool audio, bool video,
+            bool is_dtls, uint32_t log_id,
             rtc::RTCCertificate* certificate,
             std::string& offer);
-    
+
     int CreatePullStream(uint64_t uid, const std::string& stream_name,
-            bool audio, bool video, uint32_t log_id,
+            bool audio, bool video,
+            bool is_dtls, uint32_t log_id,
             rtc::RTCCertificate* certificate,
             std::string& offer);
 

@@ -92,6 +92,7 @@ private:
     std::unique_ptr<SessionDescription> local_desc_;
     std::unique_ptr<SessionDescription> remote_desc_;
     rtc::RTCCertificate* certificate_ = nullptr;
+    bool is_dtls_ = true;
     std::unique_ptr<TransportController> transport_controller_;
     TimerWatcher* destroy_timer_ = nullptr;
     std::vector<StreamParams> audio_source_;

@@ -450,29 +450,34 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
     std::string stream_name;
     int audio;
     int video;
-    
+    int is_dtls;
+
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
         audio = root["audio"].asInt();
         video = root["video"].asInt();
+        is_dtls = root.isMember("is_dtls") ? root["is_dtls"].asInt() : 1;
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
         return -1;
     }
-    
-    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid 
-        << "] stream_name[" << stream_name 
-        << "] auido[" << audio 
-        << "] video[" << video << "] signaling server push request";
-    
+
+    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
+        << "] stream_name[" << stream_name
+        << "] auido[" << audio
+        << "] video[" << video
+        << "] is_dtls[" << is_dtls
+        << "] signaling server push request";
+
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
     msg->cmdno = cmdno;
     msg->uid = uid;
     msg->stream_name = stream_name;
     msg->audio = audio;
     msg->video = video;
+    msg->is_dtls = is_dtls;
     msg->log_id = log_id;
     msg->worker = this;
     msg->conn = c;
@@ -488,29 +493,34 @@ int SignalingWorker::ProcessPull(int cmdno, TcpConnection* c,
     std::string stream_name;
     int audio;
     int video;
-    
+    int is_dtls;
+
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
         audio = root["audio"].asInt();
         video = root["video"].asInt();
+        is_dtls = root.isMember("is_dtls") ? root["is_dtls"].asInt() : 1;
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
         return -1;
     }
-    
-    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid 
-        << "] stream_name[" << stream_name 
-        << "] auido[" << audio 
-        << "] video[" << video << "] signaling server pull request";
-    
+
+    RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
+        << "] stream_name[" << stream_name
+        << "] auido[" << audio
+        << "] video[" << video
+        << "] is_dtls[" << is_dtls
+        << "] signaling server pull request";
+
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
     msg->cmdno = cmdno;
     msg->uid = uid;
     msg->stream_name = stream_name;
     msg->audio = audio;
     msg->video = video;
+    msg->is_dtls = is_dtls;
     msg->log_id = log_id;
     msg->worker = this;
     msg->conn = c;

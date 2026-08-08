@@ -88,7 +88,8 @@ void RtcStreamManager::RemovePullStream(uint64_t uid, const std::string& stream_
 }
 
 int RtcStreamManager::CreatePushStream(uint64_t uid, const std::string& stream_name,
-        bool audio, bool video, uint32_t log_id,
+        bool audio, bool video,
+        bool is_dtls, uint32_t log_id,
         rtc::RTCCertificate* certificate,
         std::string& offer)
 {
@@ -101,15 +102,22 @@ int RtcStreamManager::CreatePushStream(uint64_t uid, const std::string& stream_n
     stream = new PushStream(el_, allocator_.get(), uid, stream_name,
             audio, video, log_id);
     stream->RegisterListener(this);
-    stream->Start(certificate);
+
+    if (is_dtls) {
+        stream->Start(certificate);
+    } else {
+        stream->Start(nullptr);
+    }
+
     offer = stream->CreateOffer();
-    
+
     push_streams_[stream_name] = stream;
     return 0;
 }
 
 int RtcStreamManager::CreatePullStream(uint64_t uid, const std::string& stream_name,
-        bool audio, bool video, uint32_t log_id,
+        bool audio, bool video,
+        bool is_dtls, uint32_t log_id,
         rtc::RTCCertificate* certificate,
         std::string& offer)
 {
@@ -132,9 +140,15 @@ int RtcStreamManager::CreatePullStream(uint64_t uid, const std::string& stream_n
     stream->RegisterListener(this);
     stream->AddAudioSource(audio_source);
     stream->AddVideoSource(video_source);
-    stream->Start(certificate);
+
+    if (is_dtls) {
+        stream->Start(certificate);
+    } else {
+        stream->Start(nullptr);
+    }
+
     offer = stream->CreateOffer();
-    
+
     pull_streams_[stream_name] = stream;
     return 0;
 }

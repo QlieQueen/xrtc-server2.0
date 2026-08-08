@@ -24,7 +24,7 @@
 namespace xrtc {
 
 const char kMediaProtocolDtlsSavpf[] = "UDP/TLS/RTP/SAVPF";
-const char kMeidaProtocolSavpf[] = "RTP/SAVPF";
+const char kMediaProtocolSavpf[] = "RTP/SAVPF";
 
 AudioContentDescription::AudioContentDescription() {
     auto codec = std::make_shared<AudioCodecInfo>();
@@ -364,15 +364,20 @@ std::string SessionDescription::ToString() {
             fmt.append(std::to_string(codec->id));
         }
 
-        ss << "m=" << content->mid() << " 9 " << kMediaProtocolDtlsSavpf
-            << fmt << "\r\n";
+        auto transport_info = GetTransportInfo(content->mid());
+        if (transport_info && transport_info->identity_fingerprint.get()) {
+            ss << "m=" << content->mid() << " 9 " << kMediaProtocolDtlsSavpf
+                << fmt << "\r\n";
+        } else {
+            ss << "m=" << content->mid() << " 9 " << kMediaProtocolSavpf
+                << fmt << "\r\n";
+        }
 
         ss << "c=IN IP4 0.0.0.0\r\n";
         ss << "a=rtcp:9 IN IP4 0.0.0.0\r\n";
-        
+
         BuildCandidates(content, ss);
 
-        auto transport_info = GetTransportInfo(content->mid());
         if (transport_info) {
             ss << "a=ice-ufrag:" << transport_info->ice_ufrag << "\r\n";
             ss << "a=ice-pwd:" << transport_info->ice_pwd << "\r\n";

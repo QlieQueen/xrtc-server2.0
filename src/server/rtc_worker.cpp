@@ -135,7 +135,8 @@ void RtcWorker::InnerStop() {
 void RtcWorker::ProcessPush(std::shared_ptr<RtcMsg> msg) {
     std::string offer;
     int ret = rtc_stream_mgr_->CreatePushStream(msg->uid, msg->stream_name,
-            msg->audio, msg->video, msg->log_id, 
+            msg->audio, msg->video,
+            msg->is_dtls, msg->log_id,
             (rtc::RTCCertificate*)(msg->certificate),
             offer);
     
@@ -156,7 +157,8 @@ void RtcWorker::ProcessPush(std::shared_ptr<RtcMsg> msg) {
 void RtcWorker::ProcessPull(std::shared_ptr<RtcMsg> msg) {
     std::string offer;
     int ret = rtc_stream_mgr_->CreatePullStream(msg->uid, msg->stream_name,
-            msg->audio, msg->video, msg->log_id, 
+            msg->audio, msg->video,
+            msg->is_dtls, msg->log_id,
             (rtc::RTCCertificate*)(msg->certificate),
             offer);
 

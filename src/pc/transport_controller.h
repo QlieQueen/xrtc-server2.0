@@ -40,6 +40,7 @@ public:
     int SetLocalDescription(SessionDescription* desc);
     int SetRemoteDescription(SessionDescription* desc);
     void SetLocalCertificate(rtc::RTCCertificate* cert);
+    void set_dtls(bool is_dtls) { is_dtls_ = is_dtls; }
     int SendRtp(const std::string& transport_name, const char* data, size_t len);
     int SendRtcp(const std::string& transport_name, const char* data, size_t len);
 
@@ -76,6 +77,7 @@ private:
     std::map<std::string, DtlsTransport*> dtls_transport_by_name_;
     std::map<std::string, DtlsSrtpTransport*> dtls_srtp_transport_by_name_;
     rtc::RTCCertificate* local_certificate_ = nullptr;
+    bool is_dtls_ = true;
     PeerConnectionState pc_state_ = PeerConnectionState::kNew;
 };
 
