@@ -79,11 +79,11 @@ int TransportController::SetLocalDescription(SessionDescription* desc) {
         DtlsTransport* dtls = new DtlsTransport(
                 ice_agent_->GetChannel(mid, IceCandidateComponent::RTP));
         dtls->SetLocalCertificate(local_certificate_);
-        dtls->SignalReceivingState.connect(this, 
+        dtls->SignalReceivingState.connect(this,
                 &TransportController::OnDtlsReceivingState);
-        dtls->SignalReceivingState.connect(this, 
+        dtls->SignalReceivingState.connect(this,
                 &TransportController::OnDtlsWritableState);
-        dtls->SignalDtlsState.connect(this, 
+        dtls->SignalDtlsState.connect(this,
                 &TransportController::OnDtlsState);
         ice_agent_->SignalIceState.connect(this,
                 &TransportController::OnIceState);
@@ -128,8 +128,39 @@ void TransportController::OnDtlsState(DtlsTransport*, DtlsTransportState) {
     UpdateState();
 }
 
-void TransportController::OnIceState(IceAgent*, IceTransportState) {
-    UpdateState();
+void TransportController::OnIceState(IceAgent*, IceTransportState ice_state) {
+    if (is_dtls_) {
+        UpdateState();
+    } else { // 没有开启DTLS
+        PeerConnectionState pc_state = PeerConnectionState::kNew;
+        switch (ice_state) {
+            case IceTransportState::kNew:
+                break;
+            case IceTransportState::kChecking:
+                pc_state = PeerConnectionState::kConnecting;
+                break;
+            case IceTransportState::kConnected:
+            case IceTransportState::kCompleted:
+                pc_state = PeerConnectionState::kConnected;
+                break;
+            case IceTransportState::kDisconnected:
+                pc_state = PeerConnectionState::kDisconnected;
+                break;
+            case IceTransportState::kFailed:
+                pc_state = PeerConnectionState::kFailed;
+                break;
+            case IceTransportState::kClosed:
+                pc_state = PeerConnectionState::kClosed;
+                break;
+            default:
+                break;
+        }
+
+        if (pc_state_ != pc_state) {
+            pc_state_ = pc_state;
+            SignalConnectionState(this, pc_state);
+        }
+    }
 }
 
 void TransportController::UpdateState() {
@@ -244,7 +275,7 @@ int TransportController::SetRemoteDescription(SessionDescription* desc) {
     return 0;
 }
 
-int TransportController::SendRtp(const std::string& transport_name, 
+int TransportController::SendRtp(const std::string& transport_name,
         const char* data, size_t len)
 {
     auto dtls_srtp = GetDtlsSrtpTransport(transport_name);
@@ -254,7 +285,7 @@ int TransportController::SendRtp(const std::string& transport_name,
     return -1;
 }
 
-int TransportController::SendRtcp(const std::string& transport_name, 
+int TransportController::SendRtcp(const std::string& transport_name,
         const char* data, size_t len)
 {
     auto dtls_srtp = GetDtlsSrtpTransport(transport_name);
