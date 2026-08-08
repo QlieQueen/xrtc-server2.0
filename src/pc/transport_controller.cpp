@@ -19,6 +19,7 @@
 
 #include <rtc_base/logging.h>
 
+#include "modules/rtp_rtcp/rtp_utils.h"
 #include "pc/dtls_transport.h"
 #include "pc/dtls_srtp_transport.h"
 
@@ -76,32 +77,61 @@ int TransportController::SetLocalDescription(SessionDescription* desc) {
                     IceParameters(td->ice_ufrag, td->ice_pwd));
         }
 
-        DtlsTransport* dtls = new DtlsTransport(
-                ice_agent_->GetChannel(mid, IceCandidateComponent::RTP));
-        dtls->SetLocalCertificate(local_certificate_);
-        dtls->SignalReceivingState.connect(this,
-                &TransportController::OnDtlsReceivingState);
-        dtls->SignalReceivingState.connect(this,
-                &TransportController::OnDtlsWritableState);
-        dtls->SignalDtlsState.connect(this,
-                &TransportController::OnDtlsState);
-        ice_agent_->SignalIceState.connect(this,
-                &TransportController::OnIceState);
-        AddDtlsTransport(dtls);
+        if (is_dtls_) {
+            DtlsTransport* dtls = new DtlsTransport(
+                    ice_agent_->GetChannel(mid, IceCandidateComponent::RTP));
+            dtls->SetLocalCertificate(local_certificate_);
+            dtls->SignalReceivingState.connect(this,
+                    &TransportController::OnDtlsReceivingState);
+            dtls->SignalReceivingState.connect(this,
+                    &TransportController::OnDtlsWritableState);
+            dtls->SignalDtlsState.connect(this,
+                    &TransportController::OnDtlsState);
+            ice_agent_->SignalIceState.connect(this,
+                    &TransportController::OnIceState);
+            AddDtlsTransport(dtls);
 
-        DtlsSrtpTransport* dtls_srtp = new DtlsSrtpTransport(dtls->transport_name(),
-                true);
-        dtls_srtp->set_dtls_transports(dtls, nullptr);
-        dtls_srtp->SignalRtpPacketReceived.connect(this,
-                &TransportController::OnRtpPacketReceived);
-        dtls_srtp->SignalRtcpPacketReceived.connect(this,
-                &TransportController::OnRtcpPacketReceived);
-        AddDtlsSrtpTransport(dtls_srtp);
+            DtlsSrtpTransport* dtls_srtp = new DtlsSrtpTransport(dtls->transport_name(),
+                    true);
+            dtls_srtp->set_dtls_transports(dtls, nullptr);
+            dtls_srtp->SignalRtpPacketReceived.connect(this,
+                    &TransportController::OnRtpPacketReceived);
+            dtls_srtp->SignalRtcpPacketReceived.connect(this,
+                    &TransportController::OnRtcpPacketReceived);
+            AddDtlsSrtpTransport(dtls_srtp);
+        } else {
+            auto ice_channel = ice_agent_->GetChannel(mid, IceCandidateComponent::RTP);
+            if (ice_channel) {
+                ice_agent_->SignalIceState.connect(this,
+                        &TransportController::OnIceState);
+                ice_channel->SignalReadPacket.connect(this,
+                        &TransportController::OnReadPacket);
+            }
+        }
     }
     
     ice_agent_->GatheringCandidate();
 
     return 0;
+}
+
+void TransportController::OnReadPacket(IceTransportChannel* /*ice_channel*/,
+        const char* data,
+        size_t len,
+        int64_t ts)
+{
+    auto array_view = rtc::MakeArrayView(data, len);
+    RtpPacketType packet_type = InferRtpPacketType(array_view);
+    if (packet_type == RtpPacketType::kUnknown) {
+        return;
+    }
+
+    rtc::CopyOnWriteBuffer packet(data, len);
+    if (packet_type == RtpPacketType::kRtcp) {
+        SignalRtcpPacketReceived(this, &packet, ts);
+    } else {
+        SignalRtpPacketReceived(this, &packet, ts);
+    }
 }
 
 void TransportController::OnRtpPacketReceived(DtlsSrtpTransport*,
@@ -278,20 +308,36 @@ int TransportController::SetRemoteDescription(SessionDescription* desc) {
 int TransportController::SendRtp(const std::string& transport_name,
         const char* data, size_t len)
 {
-    auto dtls_srtp = GetDtlsSrtpTransport(transport_name);
-    if (dtls_srtp) {
-        return dtls_srtp->SendRtp(data, len);
+    if (is_dtls_) {
+        auto dtls_srtp = GetDtlsSrtpTransport(transport_name);
+        if (dtls_srtp) {
+            return dtls_srtp->SendRtp(data, len);
+        }
+    } else {
+        auto ice_channel = ice_agent_->GetChannel(transport_name, IceCandidateComponent::RTP);
+        if (ice_channel) {
+            ice_channel->SendPacket(data, len);
+        }
     }
+
     return -1;
 }
 
 int TransportController::SendRtcp(const std::string& transport_name,
         const char* data, size_t len)
 {
-    auto dtls_srtp = GetDtlsSrtpTransport(transport_name);
-    if (dtls_srtp) {
-        return dtls_srtp->SendRtcp(data, len);
+    if (is_dtls_) {
+        auto dtls_srtp = GetDtlsSrtpTransport(transport_name);
+        if (dtls_srtp) {
+            return dtls_srtp->SendRtcp(data, len);
+        }
+    } else {
+        auto ice_channel = ice_agent_->GetChannel(transport_name, IceCandidateComponent::RTP);
+        if (ice_channel) {
+            ice_channel->SendPacket(data, len);
+        }
     }
+
     return -1;
 }
 

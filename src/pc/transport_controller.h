@@ -61,6 +61,10 @@ private:
     void OnDtlsWritableState(DtlsTransport*);
     void OnDtlsState(DtlsTransport*, DtlsTransportState);
     void OnIceState(IceAgent*, IceTransportState);
+    void OnReadPacket(IceTransportChannel* ice_channel,
+            const char* data,
+            size_t len,
+            int64_t ts);
     void OnRtpPacketReceived(DtlsSrtpTransport*,
         rtc::CopyOnWriteBuffer* packet, int64_t ts);
     void OnRtcpPacketReceived(DtlsSrtpTransport*,
