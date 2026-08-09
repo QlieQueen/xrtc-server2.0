@@ -15,17 +15,20 @@ public:
     RTCPSender(const RtpRtcpConfig& config);
     ~RTCPSender();
 
-    // 发送指定类型的RTCP报文
-    void SendRTCP(webrtc::RTCPPacketType packet_type);
+    // 发送指定类型的RTCP报文: 成功返回0, RTCP未开启(kOff)时返回-1
+    int SendRTCP(webrtc::RTCPPacketType packet_type);
     // 设置RTCP发送模式(kOff/kCompound/kNonCompound)
     void SetRtcpStatus(webrtc::RtcpMode method);
     // 设置是否为发送端(true生成SR, false生成RR)
     void SetSendingStatus(bool sending) { sending_ = sending; }
 
 private:
+    class PacketSender; // 复合RTCP包打包器, 完整定义在 rtcp_sender.cpp
+
     // 计算复合RTCP包: 将本次报文类型标记入集合, 并组装发送
     absl::optional<uint32_t> ComputeCompundRTCPPacket(
-            webrtc::RTCPPacketType packet_type);
+            webrtc::RTCPPacketType packet_type,
+            PacketSender& sender);
     // 标记某报文类型为待发送, is_volatile=true 表示一次性标记(发送后删除)
     void SetFlag(uint32_t type, bool is_volatile);
     // 检查某报文类型是否已在待发送集合中
@@ -35,7 +38,8 @@ private:
     // 消费标记: volatile标记消费后删除, 非volatile标记force=true时才删除
     bool ConsumeFlag(uint32_t type, bool force = false);
 
-    void BuildRR();
+    // 构建RR(接收端统计报告)报文, 把打包结果追加到复合包
+    void BuildRR(PacketSender& sender);
 
 private:
     webrtc::Clock* clock_;
@@ -43,6 +47,8 @@ private:
     webrtc::RtcpMode method_ = webrtc::RtcpMode::kOff;
     // 是否处于发送状态(决定报告生成SR还是RR), 默认接收端
     bool sending_ = false;
+    // 复合包最大大小(IP_PACKET_SIZE 1500 - IP头20B - UDP头8B), 保证一个报文一个以太网帧不分片
+    size_t max_packet_size_;
 
     // 待发送的RTCP报文类型标记
     // type: 报文类型(对应RTCPPacketType)
@@ -67,7 +73,7 @@ private:
     std::set<ReportFlag> report_flags_;
 
     // 构建函数指针类型: 指向RTCPSender成员函数, 无参数无返回值
-    typedef void (RTCPSender::*BuilderFunc)();
+    typedef void (RTCPSender::*BuilderFunc)(PacketSender& sender);
     // 报文类型(type) -> 构建函数 映射表, 在构造函数中注册
     std::map<uint32_t, BuilderFunc> builders_;
 };

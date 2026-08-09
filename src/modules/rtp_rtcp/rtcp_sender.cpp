@@ -4,8 +4,41 @@
 
 namespace xrtc {
 
+// PacketSender: 复合RTCP包打包器, 负责把多个RTCP包序列化进缓冲区, 攒齐后一次性发出
+class RTCPSender::PacketSender {
+public:
+    PacketSender(size_t max_packet_size,
+            webrtc::rtcp::RtcpPacket::PacketReadyCallback callback) :
+        max_packet_size_(max_packet_size),
+        callback_(callback) {}
+    ~PacketSender() {};
+
+    // 把单个RTCP包追加到复合包: 包对象通过自己的Create虚函数序列化进buffer;
+    // 若剩余空间不足, Create内部会先回调发走已填部分(index_归零), 复用buffer继续写
+    void AppendPacket(const webrtc::rtcp::RtcpPacket& packet) {
+        packet.Create(buffer_, &index_, max_packet_size_, callback_);
+    }
+
+    // 把缓冲区中已复合的报文一次性交给回调(对应一个UDP报文), 然后清空游标
+    void Send() {
+        if (index_ > 0) {
+            callback_(rtc::ArrayView<const uint8_t>(buffer_, index_));
+            index_ = 0;
+        }
+    }
+
+private:
+    // 发送回调: 收到一个完整的RTCP报文, 由上层真正发送(当前课程仅打日志, 后续换网络发送)
+    webrtc::rtcp::RtcpPacket::PacketReadyCallback callback_;
+    size_t max_packet_size_; // 真实的大小
+    size_t index_ = 0;       // 缓冲区的写入游标(已写入字节数)
+    uint8_t buffer_[IP_PACKET_SIZE]; // 预留的空间
+};
+
+
 RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
-    clock_(config.clock)
+    clock_(config.clock),
+    max_packet_size_(IP_PACKET_SIZE - 28) // 去掉IP头部和UDP头部
 {
     // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
     // SR(发送端报告)等其他类型的构建函数在后续课程注册
@@ -47,15 +80,33 @@ bool RTCPSender::ConsumeFlag(uint32_t type, bool force) {
 }
 
 // 发送RTCP报文: 入口函数, 根据报文类型计算并发送复合RTCP包
-void RTCPSender::SendRTCP(webrtc::RTCPPacketType packet_type) {
-    // 返回值表示本次复合包的字节数, 当前课程尚未使用, 后续发送时用到
-    auto result = ComputeCompundRTCPPacket(packet_type);
+int RTCPSender::SendRTCP(webrtc::RTCPPacketType packet_type) {
+    // 发送回调: 每收到一个完整的RTCP报文(UDP载荷)触发一次;
+    // 当前课程仅打印包大小验证链路, 后续课程会替换为真正的网络发送
+    auto callback = [&](rtc::ArrayView<const uint8_t> packet) {
+        RTC_LOG(LS_WARNING) << "====================build rtcp packet, size: " << packet.size();
+    };
+
+    // PacketSender无默认构造, 用optional延迟构造(拿到max_packet_size_和回调后再创建)
+    absl::optional<PacketSender> sender;
+    sender.emplace(max_packet_size_, callback);
+
+    // 计算并组装复合包; result有值表示出错(如RTCP未开启返回-1), 直接返回错误码
+    auto result = ComputeCompundRTCPPacket(packet_type, *sender);
+    if (result) {
+        return *result;
+    }
+
+    // 复合包组装完成, 把缓冲区中的报文一次性发出
+    sender->Send();
+    return 0;
 }
 
 // 计算复合RTCP包: 先把本次要发送的报文类型记入 report_flags_,
 // 后续再遍历集合逐项组装报文并发送(集合中非volatile的项会常驻, 周期性发送)
 absl::optional<uint32_t> RTCPSender::ComputeCompundRTCPPacket(
-        webrtc::RTCPPacketType packet_type)
+        webrtc::RTCPPacketType packet_type,
+        PacketSender& sender)
 {
     // RTCP被关闭时直接返回, 不发送任何报文
     if (method_ == webrtc::RtcpMode::kOff) {
@@ -87,7 +138,7 @@ absl::optional<uint32_t> RTCPSender::ComputeCompundRTCPPacket(
                 << rtcp_packet_type;
         } else {
             BuilderFunc func = builder_it->second;
-            (this->*func)();
+            (this->*func)(sender);
         }
     }
 
@@ -116,7 +167,7 @@ void RTCPSender::PrepareReport() {
 
 // 构建RR(接收端统计报告)报文: 负责把接收统计信息打包成RTCP RR包,
 // 具体打包逻辑(填充接收端数据)在后续课程实现
-void RTCPSender::BuildRR() {
+void RTCPSender::BuildRR(PacketSender& sender) {
 
 }
 
