@@ -46,6 +46,9 @@ int LoadGeneralConf(const char* filename, GeneralConf* conf) {
         conf->ice_max_port = config["ice"]["max_port"].as<int>();
         conf->netcard = config["ice"]["netcard"].as<std::string>();
         conf->ipv4_addr = config["ice"]["ipv4_addr"].as<std::string>();
+        // RTCP周期上报间隔(ms), 供RtpRtcpImpl的周期定时器使用
+        conf->rtcp_report_timer_interval =
+                config["rtp_rtcp"]["rtcp_report_timer_interval"].as<int>();
     } catch (const YAML::Exception& e) {
         fprintf(stderr, "catch a YAML::Exception, line: %d, column: %d"
                 ", error:%s\n", e.mark.line + 1, e.mark.column + 1, e.msg.c_str());

@@ -28,9 +28,9 @@ public:
     }
 
 private:
+    size_t max_packet_size_; // 真实的大小
     // 发送回调: 收到一个完整的RTCP报文, 由上层真正发送(当前课程仅打日志, 后续换网络发送)
     webrtc::rtcp::RtcpPacket::PacketReadyCallback callback_;
-    size_t max_packet_size_; // 真实的大小
     size_t index_ = 0;       // 缓冲区的写入游标(已写入字节数)
     uint8_t buffer_[IP_PACKET_SIZE]; // 预留的空间
 };

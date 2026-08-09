@@ -11,3 +11,6 @@ ice:
     ipv4_addr: 120.76.197.143
     min_port: 10025
     max_port: 65535
+rtp_rtcp:
+    # 单位ms
+    rtcp_report_timer_interval: 100
