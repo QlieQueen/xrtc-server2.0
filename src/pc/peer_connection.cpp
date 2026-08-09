@@ -45,6 +45,7 @@ static RtpDirection GetDirection(bool send, bool recv) {
 
 PeerConnection::PeerConnection(EventLoop* el, PortAllocator* allocator) : 
     el_(el),
+    clock_(webrtc::Clock::GetRealTimeClock()),
     transport_controller_(new TransportController(el, allocator))
 {
     transport_controller_->SignalCandidateAllocateDone.connect(this,
@@ -469,10 +470,28 @@ int PeerConnection::SetRemoteSdp(const std::string& sdp) {
 
     remote_desc_->AddTransportInfo(audio_td);
     remote_desc_->AddTransportInfo(video_td);
+
+    CreateVideoReceiveStream(video_content.get());
    
     transport_controller_->SetRemoteDescription(remote_desc_.get());
     return 0;
 }
+
+void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_content) {
+    // 按照系统的推拉流原子设计原则，一个peerconnection只允许推一个或者拉一个视频
+    for (auto send_stream : video_content->streams()) {
+        uint32_t ssrc = send_stream.FirstSsrc();
+        if (ssrc != 0) {
+            VideoReceiveStreamConfig config;
+            config.el = el_;
+            config.clock = clock_;
+            video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
+        }
+        
+        break;
+    }
+}
+
 
 int PeerConnection::SendRtp(const char* data, size_t len) {
     if (transport_controller_) {
