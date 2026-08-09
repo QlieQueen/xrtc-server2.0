@@ -3,6 +3,7 @@
 
 #include "modules/rtp_rtcp/rtp_rtcp_config.h"
 #include "modules/rtp_rtcp/rtcp_sender.h"
+#include "modules/rtp_rtcp/rtcp_receiver.h"
 
 namespace xrtc {
 
@@ -20,6 +21,7 @@ public:
 private:
     EventLoop* el_;
     RTCPSender rtcp_sender_;
+    RTCPReceiver rtcp_receiver_;
 
     // RTCP周期上报定时器, 按conf的rtcp_report_timer_interval创建
     TimerWatcher* rtcp_report_timer_ = nullptr;

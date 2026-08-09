@@ -19,13 +19,18 @@ void RtcpReportCb(EventLoop* /*el*/, TimerWatcher* /*w*/, void* data) {
 
 RtpRtcpImpl::RtpRtcpImpl(const RtpRtcpConfig& config) :
     el_(config.el),
-    rtcp_sender_(config)
+    rtcp_sender_(config),
+    rtcp_receiver_(config)
 {
 
 }
 
 RtpRtcpImpl::~RtpRtcpImpl() {
-
+    // 析构时删除周期定时器, 避免回调悬垂
+    if (rtcp_report_timer_) {
+        el_->DeleteTimer(rtcp_report_timer_);
+        rtcp_report_timer_ = nullptr;
+    }
 }
 
 // 周期上报触发点: 以kRtcpReport类型发送RTCP,
