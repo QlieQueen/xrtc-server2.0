@@ -18,6 +18,13 @@ public:
     // 解析RTCP复合包: 拆包并按类型分派(当前为框架, 解析逻辑后续课程填充)
     void IncomingRtcpPacket(rtc::ArrayView<const uint8_t> packet);
 
+private:
+    struct PacketInformation;
+    bool ParseCompoundPacket(rtc::ArrayView<const uint8_t> packet,
+        PacketInformation *packet_information);
+
+private:
+    int num_skipped_packet_ = 0;
 };
 
 } // namespace xrtc
