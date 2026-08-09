@@ -18,6 +18,8 @@ public:
     void SendRTCP(webrtc::RTCPPacketType packet_type);
     // 设置RTCP发送模式(kOff/kCompound/kNonCompound)
     void SetRtcpStatus(webrtc::RtcpMode method);
+    // 设置是否为发送端(true生成SR, false生成RR)
+    void SetSendingStatus(bool sending) { sending_ = sending; }
 
 private:
     // 计算复合RTCP包: 将本次报文类型标记入集合, 并组装发送
@@ -25,11 +27,19 @@ private:
             webrtc::RTCPPacketType packet_type);
     // 标记某报文类型为待发送, is_volatile=true 表示一次性标记(发送后删除)
     void SetFlag(uint32_t type, bool is_volatile);
+    // 检查某报文类型是否已在待发送集合中
+    bool IsFlagPresent(uint32_t type);
+    // 按发送模式决定是否生成SR/RR统计报告并加入集合
+    void PrepareReport();
+    // 消费标记: volatile标记消费后删除, 非volatile标记force=true时才删除
+    bool ConsumeFlag(uint32_t type, bool force = false);
 
 private:
     webrtc::Clock* clock_;
     // 当前RTCP发送模式, 默认关闭
     webrtc::RtcpMode method_ = webrtc::RtcpMode::kOff;
+    // 是否处于发送状态(决定报告生成SR还是RR), 默认接收端
+    bool sending_ = false;
 
     // 待发送的RTCP报文类型标记
     // type: 报文类型(对应RTCPPacketType)
