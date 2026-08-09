@@ -1,6 +1,7 @@
 #ifndef __XRTCSERVER_MODULES_RTP_RTCP_RTP_RTCP_SENDER_H_
 #define __XRTCSERVER_MODULES_RTP_RTCP_RTP_RTCP_SENDER_H_
 
+#include <map>
 #include <set>
 #include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
 
@@ -34,6 +35,8 @@ private:
     // 消费标记: volatile标记消费后删除, 非volatile标记force=true时才删除
     bool ConsumeFlag(uint32_t type, bool force = false);
 
+    void BuildRR();
+
 private:
     webrtc::Clock* clock_;
     // 当前RTCP发送模式, 默认关闭
@@ -62,6 +65,11 @@ private:
 
     // 待发送的RTCP报文类型集合(按type排序), 复合包按集合逐项组装
     std::set<ReportFlag> report_flags_;
+
+    // 构建函数指针类型: 指向RTCPSender成员函数, 无参数无返回值
+    typedef void (RTCPSender::*BuilderFunc)();
+    // 报文类型(type) -> 构建函数 映射表, 在构造函数中注册
+    std::map<uint32_t, BuilderFunc> builders_;
 };
 
 } // namespace xrtc

@@ -7,7 +7,9 @@ namespace xrtc {
 RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
     clock_(config.clock)
 {
-
+    // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
+    // SR(发送端报告)等其他类型的构建函数在后续课程注册
+    builders_[webrtc::kRtcpRr] = &RTCPSender::BuildRR;
 }
 
 RTCPSender::~RTCPSender() {
@@ -46,6 +48,7 @@ bool RTCPSender::ConsumeFlag(uint32_t type, bool force) {
 
 // 发送RTCP报文: 入口函数, 根据报文类型计算并发送复合RTCP包
 void RTCPSender::SendRTCP(webrtc::RTCPPacketType packet_type) {
+    // 返回值表示本次复合包的字节数, 当前课程尚未使用, 后续发送时用到
     auto result = ComputeCompundRTCPPacket(packet_type);
 }
 
@@ -65,6 +68,28 @@ absl::optional<uint32_t> RTCPSender::ComputeCompundRTCPPacket(
 
     // 按发送模式决定是否附带SR/RR统计报告(compound/reduced-size规则)
     PrepareReport();
+
+    // 遍历report flags, 生成相应类型的rtcp包
+    auto it = report_flags_.begin();
+    while (it != report_flags_.end()) {
+        // 先保存当前元素的type, 再清理迭代器, 避免擦除后it指向下一个元素导致取错type
+        uint32_t rtcp_packet_type = it->type;
+        if (it->is_volatile) {
+            report_flags_.erase(it++);
+        } else {
+            ++it;
+        }
+
+        // 用保存的type查找对应的builder并构建报文
+        auto builder_it = builders_.find(rtcp_packet_type);
+        if (builder_it == builders_.end()) {
+            RTC_LOG(LS_WARNING) << "could not build rtcp packet for packet type: "
+                << rtcp_packet_type;
+        } else {
+            BuilderFunc func = builder_it->second;
+            (this->*func)();
+        }
+    }
 
     return absl::nullopt;
 }
@@ -87,6 +112,12 @@ void RTCPSender::PrepareReport() {
             SetFlag(sending_ ? webrtc::kRtcpSr : webrtc::kRtcpRr, true);
         }
     }
+}
+
+// 构建RR(接收端统计报告)报文: 负责把接收统计信息打包成RTCP RR包,
+// 具体打包逻辑(填充接收端数据)在后续课程实现
+void RTCPSender::BuildRR() {
+
 }
 
 }
