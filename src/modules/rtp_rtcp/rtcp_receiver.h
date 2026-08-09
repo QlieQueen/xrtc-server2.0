@@ -2,6 +2,7 @@
 #define __XRTCSERVER_MODULES_RTP_RTCP_RTCP_RECEIVER_H_
 
 #include <api/array_view.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/common_header.h>
 
 #include "modules/rtp_rtcp/rtp_rtcp_config.h"
 
@@ -22,6 +23,11 @@ private:
     struct PacketInformation;
     bool ParseCompoundPacket(rtc::ArrayView<const uint8_t> packet,
         PacketInformation *packet_information);
+
+    void HandleSr(const webrtc::rtcp::CommonHeader& rtcp_block,
+            PacketInformation* packet_information);
+    void HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,
+            PacketInformation* packet_information);
 
 private:
     int num_skipped_packet_ = 0;

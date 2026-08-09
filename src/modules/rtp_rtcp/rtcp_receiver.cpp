@@ -1,7 +1,8 @@
 #include "modules/rtp_rtcp/rtcp_receiver.h"
 
 #include <rtc_base/logging.h>
-#include <modules/rtp_rtcp/source/rtcp_packet/common_header.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/sender_report.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 
 namespace xrtc {
 
@@ -77,9 +78,34 @@ bool RTCPReceiver::ParseCompoundPacket(rtc::ArrayView<const uint8_t> packet,
             ++num_skipped_packet_;
             break;
         }
+
+        switch (rtcp_block.type()) {
+            case webrtc::rtcp::SenderReport::kPacketType:
+                HandleSr(rtcp_block, packet_information);
+                break;
+            case webrtc::rtcp::ReceiverReport::kPacketType:
+                HandleRr(rtcp_block, packet_information);
+                break;
+            default:
+                RTC_LOG(LS_WARNING) << "unknown rtcp packet_type: " << rtcp_block.type();
+                ++num_skipped_packet_;
+                break;
+        }
     }
 
     return true;
+}
+
+void RTCPReceiver::HandleSr(const webrtc::rtcp::CommonHeader& rtcp_block,
+        PacketInformation* packet_information)
+{
+
+}
+
+void RTCPReceiver::HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,
+        PacketInformation* packet_information)
+{
+
 }
 
 
