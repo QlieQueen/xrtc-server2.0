@@ -4,10 +4,16 @@
 
 namespace xrtc {
 
+namespace {
+
+const int kMaxReorderingThreshold = 450;
+
+} // namespace
 
 StreamStat::StreamStat(uint32_t ssrc, webrtc::Clock* clock) :
     ssrc_(ssrc),
-    clock_(clock)
+    clock_(clock),
+    max_reordering_threshold_(kMaxReorderingThreshold)
 {
 
 }
@@ -48,9 +54,26 @@ bool StreamStat::UpdateOutOfOrder(const webrtc::RtpPacketReceived& packet,
     int64_t sequence_number,
     int64_t now_ms)
 {
-    (void)packet;
-    (void)sequence_number;
-    (void)now_ms;
+    // 检车是否发生突变
+    if (received_seq_out_of_order_) {
+        uint16_t expected_seq_num = *received_seq_out_of_order_ + 1;
+        received_seq_out_of_order_ = absl::nullopt;
+        if (packet.SequenceNumber() == expected_seq_num) { // 认定发生序列号突变，重置计数状态
+            received_seq_max_ = sequence_number - 2;
+            return false;
+        }
+    }
+
+    // 有可能是流序列号发生突变了
+    if (abs(sequence_number - received_seq_max_) > max_reordering_threshold_) {
+        received_seq_out_of_order_ = packet.SequenceNumber();
+        ++cumulative_loss_;
+        return true;
+    }
+
+    if (sequence_number > received_seq_max_) { // 丢包
+        return false;
+    }
     // 表示乱序
     return true;
 }

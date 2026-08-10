@@ -25,13 +25,15 @@ public:
 private:
     bool ReceivedRtpPacket() const { return received_seq_first_ >= 0; }
     bool UpdateOutOfOrder(const webrtc::RtpPacketReceived& packet,
-    int64_t sequence_number,
-    int64_t now_ms);
+        int64_t sequence_number,
+        int64_t now_ms);
 
 private:
     uint32_t ssrc_;
     webrtc::Clock* clock_;
     webrtc::StreamDataCounters receive_counters_;
+    int max_reordering_threshold_;
+    absl::optional<uint16_t> received_seq_out_of_order_;
 
     webrtc::Unwrapper<uint16_t> seq_unwrapper_;
 
