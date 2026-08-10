@@ -10,6 +10,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_SRC_DIR="$SCRIPT_DIR/src"
 LOCAL_CONF_DIR="$SCRIPT_DIR/conf"
 
+echo "== rsync CMakeLists.txt 到云端 =="
+# 必须带上: CMakeLists 用 file(GLOB) 收源文件, 新增目录(如 src/video)不同步会漏编译
+rsync -avz -e ssh \
+    "$SCRIPT_DIR/CMakeLists.txt" \
+    "$SERVER:$REMOTE_SFU_DIR/CMakeLists.txt"
+
 echo "== rsync src/ 到云端 =="
 rsync -avz --exclude '.git/' -e ssh \
     "$LOCAL_SRC_DIR/" \
