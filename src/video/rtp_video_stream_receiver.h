@@ -4,6 +4,7 @@
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
 
 #include "video/video_receive_stream_config.h"
+#include "modules/rtp_rtcp/receive_stat.h"
 
 namespace xrtc {
 
@@ -12,13 +13,18 @@ namespace xrtc {
 // 当前为骨架, 接收逻辑后续课程填充
 class RtpVideoStreamReceiver {
 public:
-    RtpVideoStreamReceiver(const VideoReceiveStreamConfig& config);
+    // config: 接收流配置 (含 clock)
+    // rtp_receive_stat: 借用指针, 所有权在 VideoReceiveStream, 这里只负责往里喂包
+    RtpVideoStreamReceiver(const VideoReceiveStreamConfig& config,
+        ReceiveStat* rtp_receive_stat);
     ~RtpVideoStreamReceiver();
 
+    // 收到一个 RTP 包: 排除重传恢复的包后交给统计模块
     void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
 
 private:
     VideoReceiveStreamConfig config_;
+    ReceiveStat* rtp_receive_stat_;   // 裸指针: 借用, 不负责释放
 };
 
 } // namespace xrtc
