@@ -13,6 +13,8 @@ public:
     VideoReceiveStream(const VideoReceiveStreamConfig& config);
     ~VideoReceiveStream();
 
+    void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
+
 private:
     VideoReceiveStreamConfig config_;
     RtpVideoStreamReceiver rtp_video_stream_receiver_;

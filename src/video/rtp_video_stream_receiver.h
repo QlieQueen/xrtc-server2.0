@@ -1,6 +1,8 @@
 #ifndef XRTCSERVER_VIDEO_RTP_VIDEO_STREAM_RECEIVER_H_
 #define XRTCSERVER_VIDEO_RTP_VIDEO_STREAM_RECEIVER_H_
 
+#include <modules/rtp_rtcp/source/rtp_packet_received.h>
+
 #include "video/video_receive_stream_config.h"
 
 namespace xrtc {
@@ -12,6 +14,8 @@ class RtpVideoStreamReceiver {
 public:
     RtpVideoStreamReceiver(const VideoReceiveStreamConfig& config);
     ~RtpVideoStreamReceiver();
+
+    void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
 
 private:
     VideoReceiveStreamConfig config_;

@@ -24,6 +24,7 @@
 #include <memory>
 
 #include <rtc_base/rtc_certificate.h>
+#include <api/media_types.h>
 
 #include "base/event_loop.h"
 #include "pc/session_description.h"
@@ -86,6 +87,7 @@ private:
     void OnRtcpPacketReceived(TransportController*,
             rtc::CopyOnWriteBuffer* packet, int64_t ts);
 
+    webrtc::MediaType GetMediaType(uint32_t ssrc) const;
     void CreateVideoReceiveStream(VideoContentDescription* video_content);
 
     friend void DestroyTimerCb(EventLoop* el, TimerWatcher* w, void* data);
@@ -101,6 +103,10 @@ private:
     TimerWatcher* destroy_timer_ = nullptr;
     std::vector<StreamParams> audio_source_;
     std::vector<StreamParams> video_source_;
+
+    uint32_t remote_audio_ssrc_ = 0;
+    uint32_t remote_video_ssrc_ = 0;
+    uint32_t remote_video_rtx_ssrc_ = 0;
 
     std::unique_ptr<VideoReceiveStream> video_receive_stream_;
 };

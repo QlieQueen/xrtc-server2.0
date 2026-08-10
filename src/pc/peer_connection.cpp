@@ -19,6 +19,7 @@
 
 #include <absl/algorithm/container.h>
 #include <rtc_base/logging.h>
+#include <modules/rtp_rtcp/source/rtp_packet_received.h>
 
 #include "ice/ice_credentials.h"
 
@@ -91,10 +92,42 @@ void PeerConnection::OnConnectionState(TransportController*, PeerConnectionState
     SignalConnectionState(this, state);
 }
 
+webrtc::MediaType PeerConnection::GetMediaType(uint32_t ssrc) const {
+    if (ssrc == remote_video_ssrc_ || ssrc == remote_video_rtx_ssrc_) {
+        return webrtc::MediaType::VIDEO;
+    } else if (ssrc == remote_audio_ssrc_){
+        return webrtc::MediaType::AUDIO;
+    } else {
+        return webrtc::MediaType::ANY;
+    }
+}
+
 void PeerConnection::OnRtpPacketReceived(TransportController*,
         rtc::CopyOnWriteBuffer* packet, int64_t ts)
 {
-    SignalRtpPacketReceived(this, packet, ts);
+    // 1.把RTP数据塞进RtpPacketReceived 对象，解析出 SSRC/序列号/时间戳等字段
+    webrtc::RtpPacketReceived parsed_packet;
+    if (!parsed_packet.Parse(std::move(*packet))) {   // move：字节所有权转移给对象
+        RTC_LOG(LS_WARNING) << "invalid rtp packet";
+        return;
+    }
+
+    // 2.记录 包的到达时间 -- 将来算 jitter 的时间基准
+    if (ts > 0) {
+        parsed_packet.set_arrival_time(webrtc::Timestamp::Micros(ts));
+    } else {
+        parsed_packet.set_arrival_time(clock_->CurrentTime());
+    }
+
+    // 3. 用 SSRC 判断是：视频/音频/RTX
+    webrtc::MediaType packet_type = GetMediaType(parsed_packet.Ssrc());
+    if (packet_type == webrtc::MediaType::VIDEO) {
+        if (video_receive_stream_) {
+            video_receive_stream_->OnRtpPacket(parsed_packet);
+        }
+    }
+
+    //SignalRtpPacketReceived(this, packet, ts);
 }
 
 void PeerConnection::OnRtcpPacketReceived(TransportController*,
@@ -483,6 +516,11 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
         uint32_t ssrc = send_stream.FirstSsrc();
         if (ssrc != 0) {
             VideoReceiveStreamConfig config;
+            remote_video_ssrc_ = ssrc;  // 视频主 SSRC
+            if (send_stream.ssrcs.size() >= 2) {
+                remote_video_rtx_ssrc_ = send_stream.ssrcs[1];  // RTX SSRC
+            }
+
             config.el = el_;
             config.clock = clock_;
             video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
