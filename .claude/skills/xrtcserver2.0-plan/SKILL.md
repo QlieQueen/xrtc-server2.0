@@ -7,10 +7,10 @@ description: "消息流程 + lesson-by-lesson 方式教学，参照 xrtc2.0-9.9 
 
 ## 仓库路径
 
-- **你的 xrtc-server2.0**：`/home/ydqun/workspace/lession/xrtc-server2.0`
-- **参考课程**：`/home/ydqun/workspace/lession/xrtc2.0-9.9/`（一节课一个目录，`xrtcserver_v2` 为起点，终点 `9.9`）
-- **rtcbase**：`/home/ydqun/workspace/lession/rtcbase`（软链 → `rtcbase_v2.0`）
-- **背景笔记**：`/home/ydqun/workspace/lession/xrtc-server2.0/note/`
+- **你的 xrtc-server2.0**：`/home/ydqun/workspace/webrtc/xrtc-server2.0`
+- **参考课程**：`/home/ydqun/workspace/webrtc/xrtc2.0-9.9/`（一节课一个目录，`xrtcserver_v2` 为起点，终点 `9.9`）
+- **rtcbase**：`/home/ydqun/workspace/webrtc/rtcbase`（软链 → `rtcbase_v2`）
+- **背景笔记**：`/home/ydqun/workspace/webrtc/xrtc-server2.0/note/`
 
 ## 与参考项目的差异（重要）
 
@@ -45,9 +45,9 @@ description: "消息流程 + lesson-by-lesson 方式教学，参照 xrtc2.0-9.9 
 | Phase | 课程 | 内容 | 状态 | 参考目录 |
 |-------|------|------|------|---------|
 | 0 | — | 基线对齐（2.0 = v2 + 6 bug 修复，1V1 联调通过） | ✅ done | `xrtcserver_v2` |
-| 1 | 2.3 ~ 2.5 | 去 DTLS 明文通路 | ⬜ todo | `v2_2.3` → `v2_2.5` |
-| 2 | 3.2 ~ 3.11 | RTCP 发送/接收模块 | ⬜ todo | `v2_3.2` → `v2_3.11` |
-| 3 | 4.1 ~ 4.17 | 视频接收链路 + 接收统计 | ⬜ todo | `v2_4.1` → `v2_4.17` |
+| 1 | 2.3 ~ 2.5 | 去 DTLS 明文通路 | ✅ done | `v2_2.3` → `v2_2.5` |
+| 2 | 3.2 ~ 3.11 | RTCP 发送/接收模块 | ✅ done | `v2_3.2` → `v2_3.11` |
+| 3 | 4.1 ~ 4.17 | 视频接收链路 + 接收统计 | 🔄 进行中（v2_4.1~4.4 done，下一课 v2_4.5） | `v2_4.1` → `v2_4.17` |
 | 4 | 5.1 ~ 5.5 | 视频帧组装 | ⬜ todo | `v2_5.1` → `v2_5.5` |
 | 5 | 6.1 ~ 6.6 | 抗丢包 NACK/RTX | ⬜ todo | `v2_6.1` → `v2_6.6` |
 | 6 | 7.3 ~ 7.8 | **1V多 核心：双模式 + 多拉流 + 广播** | ⬜ todo | `v2_7.3` → `v2_7.8` |
