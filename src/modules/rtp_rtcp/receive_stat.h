@@ -6,6 +6,8 @@
 #include <rtc_base/containers/flat_map.h>
 #include <system_wrappers/include/clock.h>
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
+#include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
+#include <modules/include/module_common_types_public.h>
 
 namespace xrtc {
 
@@ -21,8 +23,23 @@ public:
     void UpdateCounters(const webrtc::RtpPacketReceived& packet);
 
 private:
+    bool ReceivedRtpPacket() const { return received_seq_first_ >= 0; }
+    bool UpdateOutOfOrder(const webrtc::RtpPacketReceived& packet,
+    int64_t sequence_number,
+    int64_t now_ms);
+
+private:
     uint32_t ssrc_;
     webrtc::Clock* clock_;
+    webrtc::StreamDataCounters receive_counters_;
+
+    webrtc::Unwrapper<uint16_t> seq_unwrapper_;
+
+    // 累计丢包数(账本): 每包到货 -1, 顺序新包补差 +(seq - max),
+    // 全部到齐账必平; 存在非rtx的重传包时可能为负值
+    int32_t cumulative_loss_ = 0;
+    int64_t received_seq_first_ = -1;  // 首个包的扩展seq, -1 表示未收到
+    int64_t received_seq_max_ = -1;    // 顺序前沿: 已收到包的最大扩展seq, 乱序包不更新
 };
 
 // 接收统计模块: 为 RTCP RR (Receiver Report) 提供数据源.

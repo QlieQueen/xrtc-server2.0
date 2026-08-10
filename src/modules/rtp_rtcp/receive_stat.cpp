@@ -17,8 +17,44 @@ StreamStat::~StreamStat() {
 }
 
 void StreamStat::UpdateCounters(const webrtc::RtpPacketReceived& packet) {
-    (void)packet;
+    int64_t now_ms = clock_->TimeInMilliseconds();
+    receive_counters_.transmitted.AddPacket(packet);
+    // 账本模型: 每包到货先还 1 笔"丢失账"(-1);
+    // 顺序包再补记自己与前沿之间缺的包 (+(seq - max)),
+    // 乱序包靠 return 短路, 只撤销自己当初那笔账
+    --cumulative_loss_;
+
+    int64_t sequence_number = seq_unwrapper_.UnwrapWithoutUpdate(packet.SequenceNumber());
+    // 收到第一个包
+    if (!ReceivedRtpPacket()) {
+        received_seq_first_ = sequence_number;
+        received_seq_max_ = sequence_number - 1;
+    } else if (UpdateOutOfOrder(packet, sequence_number, now_ms)) { // 发生乱序
+        return;
+    }
+
+    // 顺序到达的rtp包
+    cumulative_loss_ += (sequence_number - received_seq_max_);
+    received_seq_max_ = sequence_number;
+
+    // 乱序包 return 前不提交: 解绕器状态只跟随顺序前沿, 与 received_seq_max_ 保持同步
+    seq_unwrapper_.UpdateLast(sequence_number);
+
 }
+
+// 乱序/序列突变判定: 4.6 骨架恒 true (所有非首包走乱序分支, 统计值不完整),
+// 4.7 按阈值 450 实现: 比前沿旧 → 乱序/重传; 比前沿大太多 → 序列突变
+bool StreamStat::UpdateOutOfOrder(const webrtc::RtpPacketReceived& packet,
+    int64_t sequence_number,
+    int64_t now_ms)
+{
+    (void)packet;
+    (void)sequence_number;
+    (void)now_ms;
+    // 表示乱序
+    return true;
+}
+
 
 ReceiveStat::ReceiveStat(webrtc::Clock* clock) :
     clock_(clock)
