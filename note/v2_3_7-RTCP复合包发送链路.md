@@ -34,6 +34,24 @@ packet.Create(buffer_, &index_, max_packet_size_, callback_);
 
 传回调的原因：**复合包累加超过 max_packet_size_ 时，Create 内部（OnBufferFull）先把已填满的部分通过回调发走，index_ 归零后同一块 buffer 继续复用**——即自动分包，保证每个 UDP 报文不超过 MTU。
 
+**分包发生在"包与包之间"，单包永不跨报文**（这是最容易绕晕的点，拆开看）：
+
+```cpp
+// 每个子类的 Create 都是同一套先腾空、后整写的模式（以 SenderReport 为例）：
+while (*index + BlockLength() > max_length) {   // ① 已写 + 本次包长 > 上限 → 触发回调
+    if (!OnBufferFull(packet, index, callback))  // 发走 [0, *index)，*index = 0
+        return false;
+}
+CreateHeader(..., packet, index);                 // ② 本次包从 index(=0) 处完整写入
+...
+*index += kSenderBaseLength;                      // ③ 一个字节不少
+```
+
+- ① `OnBufferFull` 发走的是 **buffer_ 里已有的全部（之前的包们）**，随后 `*index = 0`
+- ②③ 因为已归零，**本次这个包整体写入新的 buffer**——它只是"挤爆空间"的触发者，自己等在 while 外面
+- 所以**拆包只发生在包与包之间**（A/B 一个报文，C 下个报文），**单个 RTCP 包绝不会被切成两半**——这符合 RTCP 规范：一个 UDP 报文里必须是完整的 RTCP 块
+- 冷知识：`OnBufferFull` 里有 `if (*index == 0) return false;`——若单包本身超过 `max_length`（buffer 还是空的就被调），直接返回 false 中断，防死循环。这也是 `max_packet_size_` 要留余量的原因
+
 ### 3. 回调（callback_）的触发时机
 
 | 时机 | 触发者 | 含义 |
@@ -42,6 +60,26 @@ packet.Create(buffer_, &index_, max_packet_size_, callback_);
 | 复合完成 | `Send()` | 发走剩余内容 |
 
 **上层无法区分是"中间片段"还是"最终包"**——收到回调就发。当前课程的回调是打日志（`RTC_LOG` 打印包大小），后续课程会替换为真正的网络发送。
+
+**关键理解：一次回调 = 一个完整的 RTCP 复合包 = 将来要发的 1 个 UDP 报文。**
+
+```cpp
+auto callback = [&](rtc::ArrayView<const uint8_t> packet) {
+    // packet 指向 buffer_ 的 [0, index_)，是已拼好的完整复合包：
+    // 首块必是 SR/RR（复合包规则），后面跟着本次 report_flags_ 里的所有块
+    RTC_LOG(LS_WARNING) << "====================build rtcp packet, size: " << packet.size();
+};
+```
+
+两个容易忽略的点：
+
+1. **回调参数是"视图"不是"拷贝"**：`packet` 指向 `PacketSender::buffer_` 内部，`OnBufferFull` 回调完立刻 `*index = 0`，buffer 会被下一个复合包复用覆盖。所以将来接网络发送时**必须在回调内部同步发出**：
+   ```cpp
+   auto callback = [&](rtc::ArrayView<const uint8_t> packet) {
+       transport_->SendRtcp(packet.data(), packet.size());  // 立即发出，不能延迟
+   };
+   ```
+2. **回调只发"完整复合包"，绝不发半截**：因为分包发生在包与包之间（见上节），回调被触发时 buffer 里一定是一个或多个完整的 RTCP 块——与"一个 UDP 报文必须装完整块"的协议要求吻合。
 
 ### 4. max_packet_size_ = IP_PACKET_SIZE - 28
 
