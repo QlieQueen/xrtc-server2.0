@@ -27,6 +27,8 @@ private:
     bool UpdateOutOfOrder(const webrtc::RtpPacketReceived& packet,
         int64_t sequence_number,
         int64_t now_ms);
+    void UpdateJitter(const webrtc::RtpPacketReceived& packet,
+            int64_t now_ms);
 
 private:
     uint32_t ssrc_;
@@ -42,6 +44,10 @@ private:
     int32_t cumulative_loss_ = 0;
     int64_t received_seq_first_ = -1;  // 首个包的扩展seq, -1 表示未收到
     int64_t received_seq_max_ = -1;    // 顺序前沿: 已收到包的最大扩展seq, 乱序包不更新
+
+    uint32_t last_received_timestamp_ = 0;
+    int64_t last_received_time_ms_ = 0;
+    uint32_t jitter_q4_ = 0;
 };
 
 // 接收统计模块: 为 RTCP RR (Receiver Report) 提供数据源.

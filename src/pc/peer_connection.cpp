@@ -122,6 +122,7 @@ void PeerConnection::OnRtpPacketReceived(TransportController*,
     // 3. 用 SSRC 判断是：视频/音频/RTX
     webrtc::MediaType packet_type = GetMediaType(parsed_packet.Ssrc());
     if (packet_type == webrtc::MediaType::VIDEO) {
+        parsed_packet.set_payload_type_frequency(webrtc::kVideoPayloadTypeFrequency);
         if (video_receive_stream_) {
             video_receive_stream_->OnRtpPacket(parsed_packet);
         }
