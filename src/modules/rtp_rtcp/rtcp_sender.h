@@ -43,6 +43,7 @@ private:
 
 private:
     webrtc::Clock* clock_;
+    uint32_t ssrc_;
     // 当前RTCP发送模式, 默认关闭
     webrtc::RtcpMode method_ = webrtc::RtcpMode::kOff;
     // 是否处于发送状态(决定报告生成SR还是RR), 默认接收端

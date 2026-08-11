@@ -1,6 +1,7 @@
 #include "modules/rtp_rtcp/rtcp_sender.h"
 
 #include <rtc_base/logging.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 
 namespace xrtc {
 
@@ -38,6 +39,7 @@ private:
 
 RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
     clock_(config.clock),
+    ssrc_(config.local_media_ssrc),
     max_packet_size_(IP_PACKET_SIZE - 28) // 去掉IP头部和UDP头部
 {
     // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
@@ -168,7 +170,8 @@ void RTCPSender::PrepareReport() {
 // 构建RR(接收端统计报告)报文: 负责把接收统计信息打包成RTCP RR包,
 // 具体打包逻辑(填充接收端数据)在后续课程实现
 void RTCPSender::BuildRR(PacketSender& sender) {
-
+    webrtc::rtcp::ReceiverReport rr;
+    rr.SetSenderSsrc(ssrc_);
 }
 
 }

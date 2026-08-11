@@ -25,6 +25,12 @@
 
 namespace xrtc {
 
+namespace {
+
+const uint32_t kDefaultVideoSsrc = 1;  // RR包中的 SSRC of packet Sender
+
+} // namespace
+
 struct SsrcInfo {
     uint32_t ssrc_id;
     std::string cname;
@@ -524,6 +530,7 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
 
             config.el = el_;
             config.clock = clock_;
+            config.rtp.local_ssrc = kDefaultVideoSsrc;
             video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
         }
         

@@ -14,6 +14,10 @@ public:
     EventLoop* el = nullptr;
     // 时间源: 接收时间戳/统计计算(到达时间、jitter)用
     webrtc::Clock* clock = nullptr;
+
+    struct Rtp {
+        uint32_t local_ssrc = 0;
+    } rtp;
 };
 
 } // namespce xrtc

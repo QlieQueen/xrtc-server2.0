@@ -5,6 +5,7 @@
 
 #include "video/video_receive_stream_config.h"
 #include "modules/rtp_rtcp/receive_stat.h"
+#include "modules/rtp_rtcp/rtp_rtcp_impl.h"
 
 namespace xrtc {
 
@@ -25,6 +26,7 @@ public:
 private:
     VideoReceiveStreamConfig config_;
     ReceiveStat* rtp_receive_stat_;   // 裸指针: 借用, 不负责释放
+    std::unique_ptr<RtpRtcpImpl> rtp_rtcp_;
 };
 
 } // namespace xrtc
