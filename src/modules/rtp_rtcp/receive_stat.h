@@ -6,6 +6,7 @@
 #include <rtc_base/containers/flat_map.h>
 #include <system_wrappers/include/clock.h>
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/report_block.h>
 #include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
 #include <modules/include/module_common_types_public.h>
 
@@ -21,6 +22,9 @@ public:
 
     // 每包累计计数, 当前空壳, 4.6 填充 seq 解绕/丢包统计
     void UpdateCounters(const webrtc::RtpPacketReceived& packet);
+    // 把本桶一个周期的统计填进 report block (fraction lost/累计丢包/ext seq/jitter),
+    // 并重置周期账本供下一周期用; 4.10 空壳, 4.11 填实
+    void MaybeAppendReportBlockAndReset(std::vector<webrtc::rtcp::ReportBlock>& result);
 
 private:
     bool ReceivedRtpPacket() const { return received_seq_first_ >= 0; }
@@ -61,6 +65,9 @@ public:
     // 工厂方法: 统一入口创建统计模块
     static std::unique_ptr<ReceiveStat> Create(webrtc::Clock* clock);
     void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
+    // 产出最多 max_blocks 个报告块: 多 SSRC 时环形轮询, 每周期从上次停下的位置继续,
+    // 保证一个 RR 包(最多 31 块)装不下时各 ssrc 公平上报
+    std::vector<webrtc::rtcp::ReportBlock> RtcpReportBlocks(size_t max_blocks);
 
     // 按 ssrc 取统计桶, 不存在则惰性创建 (SSRC 是 answer 协商后才知道的,
     // 主媒体与 rtx 两个 ssrc 知晓时机不同, 按需创建)
@@ -71,6 +78,10 @@ private:
     // ssrc → 统计桶. flat_map: 小容器连续内存 + 二分查找,
     // SSRC 数量极小(1~2个), 比 unordered_map 缓存友好
     webrtc::flat_map<uint32_t, std::unique_ptr<StreamStat>> stats_;
+    // 建过桶的 ssrc 登记表: 轮询要"上次位置"这个游标跨周期存活,
+    // 而 flat_map 是连续内存, 插入会搬移元素使索引/迭代器失效, 故另存稳定索引
+    std::vector<uint32_t> all_ssrcs_;
+    size_t last_returned_ssrc_idx_ = 0; // 轮询游标: 上次上报到的位置, 下次从其后继续
 };
 
 } // namespace xrtc

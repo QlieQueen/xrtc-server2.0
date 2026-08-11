@@ -118,6 +118,12 @@ bool StreamStat::UpdateOutOfOrder(const webrtc::RtpPacketReceived& packet,
     return true;
 }
 
+// 4.10 空壳: 只定好"本桶产出一个报告块并重置周期账本"的接口,
+// 4.11 填 fraction lost / cumulative lost / ext highest seq / jitter (见 note/v2_4.10-RR包报告块深度拆解)
+void StreamStat::MaybeAppendReportBlockAndReset(
+        std::vector<webrtc::rtcp::ReportBlock>& result) {
+
+}
 
 ReceiveStat::ReceiveStat(webrtc::Clock* clock) :
     clock_(clock)
@@ -141,6 +147,8 @@ StreamStat* ReceiveStat::GetOrCreateStat(uint32_t ssrc) {
     std::unique_ptr<StreamStat>& stat = stats_[ssrc];
     if (nullptr == stat) {
         stat = std::make_unique<StreamStat>(ssrc, clock_);
+        // 首次建桶登记 ssrc, 供 RtcpReportBlocks 轮询遍历
+        all_ssrcs_.push_back(ssrc);
     }
 
     return stat.get();
@@ -155,5 +163,25 @@ void ReceiveStat::OnRtpPacket(const webrtc::RtpPacketReceived& packet) {
     GetOrCreateStat(packet.Ssrc())->UpdateCounters(packet);
 }
 
+// 多 SSRC 公平轮询: 一个 RR 包的 Report Block Count 只有 5bit(最多 31 块),
+// ssrc 超过上限时一次装不下, 从上次停下的位置(last_returned_ssrc_idx_ + 1)环形继续,
+// 让每个 ssrc 在各周期间均匀地被上报, 不会饿死排在后面的 ssrc
+std::vector<webrtc::rtcp::ReportBlock> ReceiveStat::RtcpReportBlocks(size_t max_blocks) {
+    std::vector<webrtc::rtcp::ReportBlock> result;
+    result.reserve(std::min(max_blocks, all_ssrcs_.size()));
+
+    size_t ssrc_idx = 0;
+    for (size_t i = 0; i < all_ssrcs_.size() && result.size() < max_blocks; ++i) {
+        ssrc_idx = (last_returned_ssrc_idx_ + 1 + i) % all_ssrcs_.size();
+        uint32_t media_ssrc = all_ssrcs_[ssrc_idx];
+        auto stat_iter = stats_.find(media_ssrc);
+        stat_iter->second->MaybeAppendReportBlockAndReset(result);
+    }
+
+    // 循环溢出后 ssrc_idx 停在最后处理的位置, 作为下周期的起点
+    last_returned_ssrc_idx_ = ssrc_idx;
+
+    return result;
+}
 
 } // namespace xrtc

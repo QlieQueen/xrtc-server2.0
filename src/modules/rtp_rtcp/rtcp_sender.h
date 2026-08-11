@@ -4,8 +4,10 @@
 #include <map>
 #include <set>
 #include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/report_block.h>
 
 #include "modules/rtp_rtcp/rtp_rtcp_config.h"
+#include "modules/rtp_rtcp/receive_stat.h"
 
 namespace xrtc {
 
@@ -38,12 +40,16 @@ private:
     // 消费标记: volatile标记消费后删除, 非volatile标记force=true时才删除
     bool ConsumeFlag(uint32_t type, bool force = false);
 
+    // 从 receive_stat_ 取报告块(数据源), 供 BuildRR 塞进 RR 包
+    std::vector<webrtc::rtcp::ReportBlock> CreateRtcpReportBlocks();
+
     // 构建RR(接收端统计报告)报文, 把打包结果追加到复合包
     void BuildRR(PacketSender& sender);
 
 private:
     webrtc::Clock* clock_;
     uint32_t ssrc_;
+    ReceiveStat* receive_stat_; // 接收统计(config 传入, 非拥有; 生命周期归 VideoReceiveStream)
     // 当前RTCP发送模式, 默认关闭
     webrtc::RtcpMode method_ = webrtc::RtcpMode::kOff;
     // 是否处于发送状态(决定报告生成SR还是RR), 默认接收端

@@ -2,6 +2,7 @@
 
 #include <rtc_base/logging.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
+#include <modules/rtp_rtcp/source/rtp_rtcp_config.h>
 
 namespace xrtc {
 
@@ -40,6 +41,7 @@ private:
 RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
     clock_(config.clock),
     ssrc_(config.local_media_ssrc),
+    receive_stat_(config.receive_stat), // 4.10 接入接收统计, RR 报告块的数据源
     max_packet_size_(IP_PACKET_SIZE - 28) // 去掉IP头部和UDP头部
 {
     // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
@@ -167,11 +169,28 @@ void RTCPSender::PrepareReport() {
     }
 }
 
-// 构建RR(接收端统计报告)报文: 负责把接收统计信息打包成RTCP RR包,
-// 具体打包逻辑(填充接收端数据)在后续课程实现
+// 从接收统计取报告块: RTCP_MAX_REPORT_BLOCKS=31(一个 RR 包的块数上限);
+// receive_stat_ 未接线(为 nullptr)时返回空, 兼容只发信令不建统计的场景
+std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks() {
+    std::vector<webrtc::rtcp::ReportBlock> result;
+    if (!receive_stat_) {
+        return result;
+    }
+
+    result = receive_stat_->RtcpReportBlocks(webrtc::RTCP_MAX_REPORT_BLOCKS);
+
+    return result;
+}
+
+
+// 构建RR(接收端统计报告)报文: 头部 SSRC 填本端(接收方)的 ssrc,
+// 报告块从接收统计取(4.10 打通链路, 块内字段由 4.11 填实)
 void RTCPSender::BuildRR(PacketSender& sender) {
     webrtc::rtcp::ReceiverReport rr;
     rr.SetSenderSsrc(ssrc_);
+    rr.SetReportBlocks(CreateRtcpReportBlocks());
+    // rr 追加进复合包(sender.AppendPacket)留到后续课程, 当前先消除未用参数警告
+    (void)sender;
 }
 
 }

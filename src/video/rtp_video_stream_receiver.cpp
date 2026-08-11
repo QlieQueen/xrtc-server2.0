@@ -4,11 +4,17 @@ namespace xrtc {
 
 namespace {
 
-std::unique_ptr<RtpRtcpImpl> CreateRtpRtcpModule(const VideoReceiveStreamConfig& vconf) {
+std::unique_ptr<RtpRtcpImpl> CreateRtpRtcpModule(
+        const VideoReceiveStreamConfig& vconf,
+        ReceiveStat* receive_stat)
+{
     RtpRtcpConfig config;
     config.el = vconf.el;
     config.clock = vconf.clock;
     config.local_media_ssrc = vconf.rtp.local_ssrc;
+    // 把 VideoReceiveStream 持有的 ReceiveStat 传给 RTCP 模块,
+    // 使 RTCPSender 能拿到接收统计构建 RR 报告块
+    config.receive_stat = receive_stat;
 
     auto rtp_rtcp = std::make_unique<RtpRtcpImpl>(config);
     rtp_rtcp->SetRtcpStatus(webrtc::RtcpMode::kCompound);
@@ -21,7 +27,7 @@ RtpVideoStreamReceiver::RtpVideoStreamReceiver(const VideoReceiveStreamConfig& c
         ReceiveStat* rtp_receive_stat) :
     config_(config),
     rtp_receive_stat_(rtp_receive_stat),
-    rtp_rtcp_(CreateRtpRtcpModule(config))
+    rtp_rtcp_(CreateRtpRtcpModule(config, rtp_receive_stat))
 {
 
 }
