@@ -38,7 +38,6 @@ RtpRtcpImpl::~RtpRtcpImpl() {
 // 周期上报触发点: 以kRtcpReport类型发送RTCP,
 // RTCPSender内部由PrepareReport按发送模式决定本次是否附带SR/RR
 void RtpRtcpImpl::TimeToSendRTCP() {
-    RTC_LOG(LS_WARNING) << "=============TimeToSendRTCP";
     rtcp_sender_.SendRTCP(webrtc::kRtcpReport);
 }
 
