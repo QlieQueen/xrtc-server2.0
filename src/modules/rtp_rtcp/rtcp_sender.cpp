@@ -3,6 +3,7 @@
 #include <rtc_base/logging.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 #include <modules/rtp_rtcp/source/rtp_rtcp_config.h>
+#include <modules/rtp_rtcp/source/time_util.h>
 
 namespace xrtc {
 
@@ -170,14 +171,36 @@ void RTCPSender::PrepareReport() {
 }
 
 // 从接收统计取报告块: RTCP_MAX_REPORT_BLOCKS=31(一个 RR 包的块数上限);
-// receive_stat_ 未接线(为 nullptr)时返回空, 兼容只发信令不建统计的场景
-std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks() {
+// receive_stat_ 未接线(为 nullptr)时返回空, 兼容只发信令不建统计的场景;
+// 有报告块且记录过SR到达时间时, 再填充块内 LSR(抄发送端NTP) 与 DLSR(收SR→发RR延迟)
+std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks(
+        const FeedbackState& feedback_state)
+{
     std::vector<webrtc::rtcp::ReportBlock> result;
     if (!receive_stat_) {
         return result;
     }
 
     result = receive_stat_->RtcpReportBlocks(webrtc::RTCP_MAX_REPORT_BLOCKS);
+
+    // 填充LSR和DLSR: 需要先收到过SR包(记录过到达时刻)
+    if (!result.empty() && ((feedback_state.last_rr_ntp_secs > 0) ||
+            (feedback_state.last_rr_ntp_frac > 0)))
+    {
+        // DLSR = 发RR时刻 - 收到最近SR时刻, 均为32位压缩NTP
+        // (秒低16位 | 分数高16位, RFC3550 报告块字段格式)
+        int32_t now = webrtc::CompactNtp(clock_->CurrentNtpTime());
+        // 收到最近一次SR包时，接收端压缩后的32位NTP时间
+        int32_t receive_time = feedback_state.last_rr_ntp_secs & 0x0000FFFF;
+        receive_time <<= 16;
+        receive_time += ((feedback_state.last_rr_ntp_frac & 0xFFFF0000) >> 16);
+        int32_t delay_since_last_sr = now - receive_time;
+        
+        for (auto& report_block : result) {
+            report_block.SetLastSr(feedback_state.remote_sr);
+            report_block.SetDelayLastSr(delay_since_last_sr);
+        }
+    }
 
     return result;
 }
@@ -186,9 +209,11 @@ std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks() {
 // 构建RR(接收端统计报告)报文: 头部 SSRC 填本端(接收方)的 ssrc,
 // 报告块从接收统计取(4.10 打通链路, 块内字段由 4.11 填实)
 void RTCPSender::BuildRR(PacketSender& sender) {
+    FeedbackState feedback_state;
+
     webrtc::rtcp::ReceiverReport rr;
     rr.SetSenderSsrc(ssrc_);
-    rr.SetReportBlocks(CreateRtcpReportBlocks());
+    rr.SetReportBlocks(CreateRtcpReportBlocks(feedback_state));
     // rr 追加进复合包(sender.AppendPacket)留到后续课程, 当前先消除未用参数警告
     (void)sender;
 }

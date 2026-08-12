@@ -14,6 +14,15 @@ namespace xrtc {
 // RTCP发送器: 负责RTCP报文的发送(复合包计算、待发送报文类型管理)
 class RTCPSender {
 public:
+    struct FeedbackState {
+        // 接收端本地时钟记录"最近一次收到SR"的时刻(NTP秒/分数部分),
+        // 与当前发RR时刻做差即DLSR(延迟)
+        int32_t last_rr_ntp_secs = 0;
+        int32_t last_rr_ntp_frac = 0;
+        // 从最近一次SR包中提取的NTP时间(发送端时钟读数), 原样抄入报告块LSR字段
+        int64_t remote_sr = 0;
+    };
+
     RTCPSender(const RtpRtcpConfig& config);
     ~RTCPSender();
 
@@ -41,7 +50,8 @@ private:
     bool ConsumeFlag(uint32_t type, bool force = false);
 
     // 从 receive_stat_ 取报告块(数据源), 供 BuildRR 塞进 RR 包
-    std::vector<webrtc::rtcp::ReportBlock> CreateRtcpReportBlocks();
+    std::vector<webrtc::rtcp::ReportBlock> CreateRtcpReportBlocks(
+            const FeedbackState& feedback_state);
 
     // 构建RR(接收端统计报告)报文, 把打包结果追加到复合包
     void BuildRR(PacketSender& sender);
