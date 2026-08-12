@@ -7,6 +7,7 @@ namespace xrtc {
 namespace {
 
 const int kMaxReorderingThreshold = 450;
+const int kStreamStatTimeoutMs = 8000;
 
 } // namespace
 
@@ -118,11 +119,70 @@ bool StreamStat::UpdateOutOfOrder(const webrtc::RtpPacketReceived& packet,
     return true;
 }
 
-// 4.10 空壳: 只定好"本桶产出一个报告块并重置周期账本"的接口,
-// 4.11 填 fraction lost / cumulative lost / ext highest seq / jitter (见 note/v2_4.10-RR包报告块深度拆解)
+// 报告块填充 + 周期基线更新(AndReset):
+// 把 4.6~4.8 攒的状态换算成 report block 四个字段:
+// fraction lost(本周期差值) / cumulative lost(全程累计+负值偏移+封顶) /
+// ext highest seq / jitter (见 note/v2_4.10-RR包报告块深度拆解)
 void StreamStat::MaybeAppendReportBlockAndReset(
         std::vector<webrtc::rtcp::ReportBlock>& result) {
+    int64_t now_ms = clock_->TimeInMilliseconds();
+    // 超时保护: 8s 没收到包说明流已停, 不发陈旧统计(最后包到达后不再上报)
+    if (now_ms - last_received_time_ms_ > kStreamStatTimeoutMs) {
+        return;
+    }
 
+    // 从来没收到过包, 没有可报的统计
+    if (!ReceivedRtpPacket()) {
+        return;
+    }
+
+    // 生成report block, 先写"被报告的发送端媒体 ssrc"(本桶是谁就报谁)
+    result.emplace_back();
+    webrtc::rtcp::ReportBlock& stats = result.back(); // 引用尾部元素
+    stats.SetMediaSsrc(ssrc_);
+
+    // fraction lost(8bit 定点小数, 0~255 映射 0~100%): 差值法取"本报告周期"的丢包比例
+    int64_t exp_since_last = received_seq_max_ - last_report_seq_max_;      // 本周期期望收(相对上次报告基线)
+    int32_t loss_since_last = cumulative_loss_ - last_report_cumulative_loss_; // 本周期丢包增量
+    // 255 而非 256: 字段 8bit 无符号, 100% 丢时 256 会溢出成 0; 255*比例永不溢出
+    // 两值都 >0 才填: loss<=0 表示本周期没丢(字段默认 0 即可), exp<=0 会除零
+    if (exp_since_last > 0 && loss_since_last > 0) {
+        stats.SetFractionLost(255 * loss_since_last / exp_since_last);
+    }
+
+    // cumulative lost(24bit 有符号, 全程累计): 内部账本 cumulative_loss_ 可为负
+    // (重传/乱序时实收>期望, 见 4.7 账本模型), 但字段必须非负;
+    // 负值时用 offset 线性平移而不是 clamp(非线性):
+    // clamp 把负区间信息抹掉, 破坏接收端"相邻 RR 差分"的准确性;
+    // offset 保持差分不变, 报出值恒非负且单调
+    int32_t packets_lost = cumulative_loss_ + cumulative_loss_rtcp_offset_;
+    if (packets_lost < 0) {
+        packets_lost = 0;
+        // 偏移定格"历史最深负值": 之后报出 = 内部 + 偏移 恒非负;
+        // 仅当内部跌破新纪录时才再次触发刷新
+        cumulative_loss_rtcp_offset_ = -cumulative_loss_;
+    }
+
+    // 24bit 有符号上限 2^23-1, 超过会溢出成负数(写 3 字节符号位翻转);
+    // 封顶到最大值, 且只告警一次(避免每周期刷屏)
+    if (packets_lost > 0x7FFFFF) {
+        if (!cumulative_loss_is_capped_) {
+            cumulative_loss_is_capped_ = true;
+            RTC_LOG(LS_WARNING) << "cumulative packet loss reached max value for ssrc: "
+                << ssrc_;
+        }
+        packets_lost = 0x7FFFFF;
+    }
+
+    stats.SetCumulativeLost(packets_lost);
+    stats.SetExtHighestSeqNum(received_seq_max_);
+    // jitter 是 EWMA 状态, 天然是当前值, 直接 >>4 还原上报(4.8 的 Q4 定点)
+    stats.SetJitter(jitter_q4_ >> 4);
+
+    // AndReset 重置的是"上次报告基线"(两个快照), 不是累计账本:
+    // 基线供下周期 fraction lost 差值对比; cumulative_loss_ 原样保留
+    last_report_seq_max_ = received_seq_max_;
+    last_report_cumulative_loss_ = cumulative_loss_;
 }
 
 ReceiveStat::ReceiveStat(webrtc::Clock* clock) :

@@ -48,6 +48,11 @@ private:
     int32_t cumulative_loss_ = 0;
     int64_t received_seq_first_ = -1;  // 首个包的扩展seq, -1 表示未收到
     int64_t received_seq_max_ = -1;    // 顺序前沿: 已收到包的最大扩展seq, 乱序包不更新
+    // 上次报告基线: 填报告块时更新成当前值, 供下周期 fraction lost 差值对比(AndReset)
+    int64_t last_report_seq_max_ = -1;
+    int32_t last_report_cumulative_loss_ = 0;
+    int cumulative_loss_rtcp_offset_ = 0;  // 累计丢包负值偏移: 报出=内部+偏移 恒非负, 保差分准确
+    bool cumulative_loss_is_capped_ = false; // 累计丢包已封顶: 只告警一次
 
     uint32_t last_received_timestamp_ = 0;
     int64_t last_received_time_ms_ = 0;
