@@ -18,6 +18,11 @@ RTCPReceiver::~RTCPReceiver() {
 
 }
 
+// 设置远端媒体流SSRC: HandleSr 过滤SR包用, 只处理本端关注的那路流
+void RTCPReceiver::SetRemoteSsrc(uint32_t ssrc) {
+    remote_ssrc_ = ssrc;
+}
+
 // 指针形式入口: 包装成ArrayView后交给统一解析入口
 void RTCPReceiver::IncomingRtcpPacket(const uint8_t* packet, size_t packet_length) {
     IncomingRtcpPacket(rtc::MakeArrayView<const uint8_t>(packet, packet_length));
@@ -99,7 +104,20 @@ bool RTCPReceiver::ParseCompoundPacket(rtc::ArrayView<const uint8_t> packet,
 void RTCPReceiver::HandleSr(const webrtc::rtcp::CommonHeader& rtcp_block,
         PacketInformation* packet_information)
 {
+    // 解析SR包体(公共头已由 ParseCompoundPacket 解析校验)
+    webrtc::rtcp::SenderReport sr;
+    if (!sr.Parse(rtcp_block)) {
+        ++num_skipped_packet_;
+        return;
+    }
 
+    // SSRC过滤: SR的sender ssrc = 推流端媒体流SSRC, 只处理本端关注的那路流,
+    // 避免多流/噪声流刷屏; 后续课程从这里取NTP填FeedbackState
+    uint32_t remote_ssrc = sr.sender_ssrc();
+    if (remote_ssrc == remote_ssrc_) {
+        RTC_LOG(LS_WARNING) << "==========sr ssrc: " << sr.sender_ssrc()
+            << ", packet_count: " << sr.sender_packet_count();
+    }
 }
 
 void RTCPReceiver::HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,

@@ -18,4 +18,9 @@ void VideoReceiveStream::OnRtpPacket(const webrtc::RtpPacketReceived& packet) {
     rtp_video_stream_receiver_.OnRtpPacket(packet);
 }
 
+// 收到RTCP数据: 转给RtpVideoStreamReceiver, 最终喂给RTCP模块解析
+void VideoReceiveStream::DeliverRtcp(const uint8_t* data, size_t len) {
+    rtp_video_stream_receiver_.DeliverRtcp(data, len);
+}
+
 } // namespace xrtc

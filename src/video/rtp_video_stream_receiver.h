@@ -22,6 +22,8 @@ public:
 
     // 收到一个 RTP 包: 排除重传恢复的包后交给统计模块
     void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
+    // 收到RTCP数据: 转给RTCP模块(RtpRtcpImpl)解析
+    void DeliverRtcp(const uint8_t* data, size_t len);
 
 private:
     VideoReceiveStreamConfig config_;

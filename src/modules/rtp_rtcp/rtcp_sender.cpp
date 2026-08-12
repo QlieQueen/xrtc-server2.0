@@ -171,8 +171,9 @@ void RTCPSender::PrepareReport() {
 }
 
 // 从接收统计取报告块: RTCP_MAX_REPORT_BLOCKS=31(一个 RR 包的块数上限);
-// receive_stat_ 未接线(为 nullptr)时返回空, 兼容只发信令不建统计的场景;
-// 有报告块且记录过SR到达时间时, 再填充块内 LSR(抄发送端NTP) 与 DLSR(收SR→发RR延迟)
+// receive_stat_ 由 RtpVideoStreamReceiver 创建时接入(VideoReceiveStream 持有),
+// RTP 包已喂入计数; 有报告块且记录过SR到达时间时, 再填充块内 LSR(抄发送端NTP) 与
+// DLSR(收SR→发RR延迟, feedback_state 由 RTCPReceiver 解析 SR 后填充)
 std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks(
         const FeedbackState& feedback_state)
 {

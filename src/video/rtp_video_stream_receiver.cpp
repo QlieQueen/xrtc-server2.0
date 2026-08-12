@@ -29,7 +29,8 @@ RtpVideoStreamReceiver::RtpVideoStreamReceiver(const VideoReceiveStreamConfig& c
     rtp_receive_stat_(rtp_receive_stat),
     rtp_rtcp_(CreateRtpRtcpModule(config, rtp_receive_stat))
 {
-
+    // 把远端媒体流SSRC交给RTCP模块: RTCPReceiver解析SR时过滤用
+    rtp_rtcp_->SetRemoteSsrc(config.rtp.remote_ssrc);
 }
 
 RtpVideoStreamReceiver::~RtpVideoStreamReceiver() {
@@ -42,6 +43,11 @@ void RtpVideoStreamReceiver::OnRtpPacket(const webrtc::RtpPacketReceived& packet
     if (!packet.recovered()) {
         rtp_receive_stat_->OnRtpPacket(packet);
     }
+}
+
+// 收到RTCP数据: 转给RTCP模块(RtpRtcpImpl), 由RTCPReceiver拆包解析
+void RtpVideoStreamReceiver::DeliverRtcp(const uint8_t* data, size_t len) {
+    rtp_rtcp_->IncomingRtcpPacket(data, len);
 }
 
 } // namespace xrtc

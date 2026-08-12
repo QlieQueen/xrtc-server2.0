@@ -16,7 +16,10 @@ public:
     webrtc::Clock* clock = nullptr;
 
     struct Rtp {
+        // 本端(接收端)媒体SSRC
         uint32_t local_ssrc = 0;
+        // 远端(发送端)媒体SSRC: RTCPReceiver 过滤SR包用
+        uint32_t remote_ssrc = 0;
     } rtp;
 };
 

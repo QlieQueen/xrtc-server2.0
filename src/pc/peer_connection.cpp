@@ -140,7 +140,13 @@ void PeerConnection::OnRtpPacketReceived(TransportController*,
 void PeerConnection::OnRtcpPacketReceived(TransportController*,
         rtc::CopyOnWriteBuffer* packet, int64_t ts)
 {
-    SignalRtcpPacketReceived(this, packet, ts);
+    // 收到的RTCP包直接投递给视频接收流, 由RTCPReceiver解析(4.13起走这条链路);
+    // 原SignalRtcpPacketReceived信号链路暂保留
+    if (video_receive_stream_) {
+        video_receive_stream_->DeliverRtcp(packet->data(), packet->size());
+    }
+
+    //SignalRtcpPacketReceived(this, packet, ts);
 }
 
 int PeerConnection::Init(rtc::RTCCertificate* certificate) {
@@ -531,6 +537,8 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
             config.el = el_;
             config.clock = clock_;
             config.rtp.local_ssrc = kDefaultVideoSsrc;
+            // 远端视频主SSRC(从SDP的a=ssrc解析): RTCP接收解析SR时过滤用
+            config.rtp.remote_ssrc = remote_video_ssrc_;
             video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
         }
         

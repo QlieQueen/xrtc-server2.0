@@ -62,5 +62,14 @@ void RtpRtcpImpl::SetRtcpStatus(webrtc::RtcpMode method) {
     rtcp_sender_.SetRtcpStatus(method);
 }
 
+// 收到RTCP数据: 交给RTCPReceiver拆包解析(复合包解包+SR/RR分派)
+void RtpRtcpImpl::IncomingRtcpPacket(const uint8_t* data, size_t len) {
+    rtcp_receiver_.IncomingRtcpPacket(data, len);
+}
+
+// 设置远端媒体流SSRC: RTCPReceiver 过滤SR包时用
+void RtpRtcpImpl::SetRemoteSsrc(uint32_t ssrc) {
+    rtcp_receiver_.SetRemoteSsrc(ssrc);
+}
 
 } // namespace xrtc

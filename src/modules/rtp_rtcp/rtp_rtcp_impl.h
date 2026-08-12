@@ -17,6 +17,10 @@ public:
     void SetRtcpStatus(webrtc::RtcpMode method);
     // 周期上报触发点(定时器回调调用), 以kRtcpReport类型发送
     void TimeToSendRTCP();
+    // 收到RTCP数据入口: 转交RTCPReceiver拆包解析
+    void IncomingRtcpPacket(const uint8_t* data, size_t len);
+    // 设置远端媒体流SSRC: 转交RTCPReceiver, 用于SR包过滤
+    void SetRemoteSsrc(uint32_t ssrc);
 
 private:
     EventLoop* el_;
