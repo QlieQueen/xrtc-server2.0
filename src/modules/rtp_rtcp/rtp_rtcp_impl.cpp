@@ -38,7 +38,7 @@ RtpRtcpImpl::~RtpRtcpImpl() {
 // 周期上报触发点: 以kRtcpReport类型发送RTCP,
 // RTCPSender内部由PrepareReport按发送模式决定本次是否附带SR/RR
 void RtpRtcpImpl::TimeToSendRTCP() {
-    rtcp_sender_.SendRTCP(webrtc::kRtcpReport);
+    rtcp_sender_.SendRTCP(GetFeedbackState(), webrtc::kRtcpReport);
 }
 
 // 设置RTCP开关: 开启时创建周期定时器(按conf配置间隔触发上报), 关闭时删除
@@ -70,6 +70,26 @@ void RtpRtcpImpl::IncomingRtcpPacket(const uint8_t* data, size_t len) {
 // 设置远端媒体流SSRC: RTCPReceiver 过滤SR包时用
 void RtpRtcpImpl::SetRemoteSsrc(uint32_t ssrc) {
     rtcp_receiver_.SetRemoteSsrc(ssrc);
+}
+
+RTCPSender::FeedbackState RtpRtcpImpl::GetFeedbackState() {
+    RTCPSender::FeedbackState state;
+
+    uint32_t receive_ntp_secs;
+    uint32_t receive_ntp_frac;
+    state.remote_sr = 0;
+
+    if (rtcp_receiver_.NTP(&receive_ntp_secs,
+                           &receive_ntp_frac,
+                           &state.last_rr_ntp_secs,
+                           &state.last_rr_ntp_frac,
+                           nullptr))
+    {
+        state.remote_sr = ((receive_ntp_secs & 0x0000FFFF) << 16) + 
+                    ((receive_ntp_frac & 0xFFFF0000) >> 16);
+    }
+
+    return state;
 }
 
 } // namespace xrtc

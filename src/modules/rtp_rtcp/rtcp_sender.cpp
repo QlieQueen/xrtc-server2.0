@@ -85,7 +85,9 @@ bool RTCPSender::ConsumeFlag(uint32_t type, bool force) {
 }
 
 // 发送RTCP报文: 入口函数, 根据报文类型计算并发送复合RTCP包
-int RTCPSender::SendRTCP(webrtc::RTCPPacketType packet_type) {
+int RTCPSender::SendRTCP(const FeedbackState& feedback_state,
+    webrtc::RTCPPacketType packet_type)
+{
     // 发送回调: 每收到一个完整的RTCP报文(UDP载荷)触发一次;
     // 当前课程仅打印包大小验证链路, 后续课程会替换为真正的网络发送
     auto callback = [&](rtc::ArrayView<const uint8_t> packet) {
@@ -97,7 +99,7 @@ int RTCPSender::SendRTCP(webrtc::RTCPPacketType packet_type) {
     sender.emplace(max_packet_size_, callback);
 
     // 计算并组装复合包; result有值表示出错(如RTCP未开启返回-1), 直接返回错误码
-    auto result = ComputeCompundRTCPPacket(packet_type, *sender);
+    auto result = ComputeCompundRTCPPacket(feedback_state, packet_type, *sender);
     if (result) {
         return *result;
     }
@@ -110,6 +112,7 @@ int RTCPSender::SendRTCP(webrtc::RTCPPacketType packet_type) {
 // 计算复合RTCP包: 先把本次要发送的报文类型记入 report_flags_,
 // 后续再遍历集合逐项组装报文并发送(集合中非volatile的项会常驻, 周期性发送)
 absl::optional<uint32_t> RTCPSender::ComputeCompundRTCPPacket(
+        const FeedbackState& feedback_state, 
         webrtc::RTCPPacketType packet_type,
         PacketSender& sender)
 {
@@ -143,7 +146,7 @@ absl::optional<uint32_t> RTCPSender::ComputeCompundRTCPPacket(
                 << rtcp_packet_type;
         } else {
             BuilderFunc func = builder_it->second;
-            (this->*func)(sender);
+            (this->*func)(feedback_state, sender);
         }
     }
 
@@ -209,9 +212,7 @@ std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks(
 
 // 构建RR(接收端统计报告)报文: 头部 SSRC 填本端(接收方)的 ssrc,
 // 报告块从接收统计取(4.10 打通链路, 块内字段由 4.11 填实)
-void RTCPSender::BuildRR(PacketSender& sender) {
-    FeedbackState feedback_state;
-
+void RTCPSender::BuildRR(const FeedbackState& feedback_state, PacketSender& sender) {
     webrtc::rtcp::ReceiverReport rr;
     rr.SetSenderSsrc(ssrc_);
     rr.SetReportBlocks(CreateRtcpReportBlocks(feedback_state));

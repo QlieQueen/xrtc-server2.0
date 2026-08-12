@@ -23,6 +23,9 @@ public:
     void SetRemoteSsrc(uint32_t ssrc);
 
 private:
+    RTCPSender::FeedbackState GetFeedbackState();
+
+private:
     EventLoop* el_;
     RTCPSender rtcp_sender_;
     RTCPReceiver rtcp_receiver_;
