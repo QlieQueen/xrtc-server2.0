@@ -10,7 +10,9 @@ struct RTCPReceiver::PacketInformation {
 
 };
 
-RTCPReceiver::RTCPReceiver(const RtpRtcpConfig& config) {
+RTCPReceiver::RTCPReceiver(const RtpRtcpConfig& config) :
+    clock_(config.clock)
+{
 
 }
 
@@ -21,6 +23,45 @@ RTCPReceiver::~RTCPReceiver() {
 // 设置远端媒体流SSRC: HandleSr 过滤SR包用, 只处理本端关注的那路流
 void RTCPReceiver::SetRemoteSsrc(uint32_t ssrc) {
     remote_ssrc_ = ssrc;
+}
+
+// 查询最近一次SR包的信息, 由HandleSr记录的成员填充:
+// 供上层填RR报告块LSR(发送端NTP)/DLSR(本地到达时刻)与算RTT(RTP时间戳对齐)
+bool RTCPReceiver::NTP(uint32_t* received_ntp_secs,
+        uint32_t* received_ntp_frac,
+        uint32_t* rtcp_arrival_time_secs,
+        uint32_t* rtcp_arrival_time_frac,
+        uint32_t* rtp_timestamp)
+{
+    if (!last_received_sr_ntp_.Valid()) { // 此时还没有收到任何SR包
+        return false;
+    }
+
+    // SR包中的NTP时间秒数部分
+    if (received_ntp_secs) {
+        *received_ntp_secs = remote_sender_ntp_time_.seconds();
+    }
+
+    // SR包中的NTP时间秒数以下部分
+    if (received_ntp_frac) {
+        *received_ntp_frac = remote_sender_ntp_time_.fractions();
+    }
+
+    // SR包到达时的本地NTP时间
+    if (rtcp_arrival_time_secs) {
+        *rtcp_arrival_time_secs = last_received_sr_ntp_.seconds();
+    }
+
+    if (rtcp_arrival_time_frac) {
+        *rtcp_arrival_time_frac = last_received_sr_ntp_.fractions();
+    }
+
+    // SR包中的RTP timestamp
+    if (rtp_timestamp) {
+        *rtp_timestamp = remote_sender_rtp_time_;
+    }
+
+    return true;
 }
 
 // 指针形式入口: 包装成ArrayView后交给统一解析入口
@@ -112,11 +153,18 @@ void RTCPReceiver::HandleSr(const webrtc::rtcp::CommonHeader& rtcp_block,
     }
 
     // SSRC过滤: SR的sender ssrc = 推流端媒体流SSRC, 只处理本端关注的那路流,
-    // 避免多流/噪声流刷屏; 后续课程从这里取NTP填FeedbackState
+    // 避免多流/噪声流刷屏
     uint32_t remote_ssrc = sr.sender_ssrc();
     if (remote_ssrc == remote_ssrc_) {
         RTC_LOG(LS_WARNING) << "==========sr ssrc: " << sr.sender_ssrc()
             << ", packet_count: " << sr.sender_packet_count();
+        // 记录SR信息(供NTP()查询): SR内NTP/RTP时间戳=发送端时钟(填LSR/算RTT),
+        // 到达时刻=接收端本地时钟(算DLSR), 包/字节计数=发送端累计统计
+        remote_sender_ntp_time_ = sr.ntp();
+        remote_sender_rtp_time_ = sr.rtp_timestamp();
+        last_received_sr_ntp_ = clock_->CurrentNtpTime();
+        remote_sender_packet_count_ = sr.sender_packet_count();
+        remote_sender_octet_count_ = sr.sender_octet_count();
     }
 }
 
