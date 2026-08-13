@@ -7,6 +7,8 @@
 
 namespace xrtc {
 
+class RtpRtcpModuleObserver;
+
 // 视频接收流配置: 由上层(后续课程的PushStream)创建并传入
 class VideoReceiveStreamConfig {
 public:
@@ -21,6 +23,8 @@ public:
         // 远端(发送端)媒体SSRC: RTCPReceiver 过滤SR包用
         uint32_t remote_ssrc = 0;
     } rtp;
+
+    RtpRtcpModuleObserver* rtp_rtcp_module_observer = nullptr;
 };
 
 } // namespce xrtc

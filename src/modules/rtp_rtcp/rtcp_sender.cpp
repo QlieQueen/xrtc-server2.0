@@ -56,7 +56,8 @@ RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
                 audio_ ? kDefaultAudioReportInterval :
                          kDefaultVideoReportInterval)),
     cur_report_interval_ms_(report_interval_ms_ / 2),
-    random_(clock_->TimeInMicroseconds())
+    random_(clock_->TimeInMicroseconds()),
+    rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer)
 {
     // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
     // SR(发送端报告)等其他类型的构建函数在后续课程注册
@@ -104,7 +105,11 @@ int RTCPSender::SendRTCP(const FeedbackState& feedback_state,
     // 发送回调: 每收到一个完整的RTCP报文(UDP载荷)触发一次;
     // 当前课程仅打印包大小验证链路, 后续课程会替换为真正的网络发送
     auto callback = [&](rtc::ArrayView<const uint8_t> packet) {
-        RTC_LOG(LS_WARNING) << "====================build rtcp packet, size: " << packet.size();
+        if (rtp_rtcp_module_observer_) {
+            rtp_rtcp_module_observer_->OnLocalRtcpPacket(
+                    audio_ ? webrtc::MediaType::AUDIO : webrtc::MediaType::VIDEO,
+                    packet.data(), packet.size());
+        }
     };
 
     // PacketSender无默认构造, 用optional延迟构造(拿到max_packet_size_和回调后再创建)

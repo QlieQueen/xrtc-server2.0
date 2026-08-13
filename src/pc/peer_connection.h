@@ -44,7 +44,9 @@ struct RTCOfferAnswerOptions {
     bool dtls_on = true;
 };
 
-class PeerConnection : public sigslot::has_slots<> {
+class PeerConnection : public sigslot::has_slots<>,
+                       public RtpRtcpModuleObserver 
+{
 public:
     PeerConnection(EventLoop* el, PortAllocator* allocator);
     
@@ -86,6 +88,9 @@ private:
             rtc::CopyOnWriteBuffer* packet, int64_t ts);
     void OnRtcpPacketReceived(TransportController*,
             rtc::CopyOnWriteBuffer* packet, int64_t ts);
+
+    void OnLocalRtcpPacket(webrtc::MediaType media_type,
+            const uint8_t* data, size_t len) override;
 
     webrtc::MediaType GetMediaType(uint32_t ssrc) const;
     void CreateVideoReceiveStream(VideoContentDescription* video_content);

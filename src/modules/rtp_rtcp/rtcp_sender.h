@@ -75,6 +75,7 @@ private:
     uint32_t report_interval_ms_;
     uint32_t cur_report_interval_ms_;
     webrtc::Random random_;
+    RtpRtcpModuleObserver* rtp_rtcp_module_observer_;
 
     // 待发送的RTCP报文类型标记
     // type: 报文类型(对应RTCPPacketType)

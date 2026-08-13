@@ -20,6 +20,7 @@
 #include <absl/algorithm/container.h>
 #include <rtc_base/logging.h>
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 
 #include "ice/ice_credentials.h"
 
@@ -539,6 +540,7 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
             config.rtp.local_ssrc = kDefaultVideoSsrc;
             // 远端视频主SSRC(从SDP的a=ssrc解析): RTCP接收解析SR时过滤用
             config.rtp.remote_ssrc = remote_video_ssrc_;
+            config.rtp_rtcp_module_observer = this;
             video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
         }
         
@@ -563,6 +565,64 @@ int PeerConnection::SendRtcp(const char* data, size_t len) {
     }
 
     return -1;
+}
+
+static void DebugCompoundRtcpPacket(const uint8_t* data, size_t len) {
+    auto packet = rtc::MakeArrayView<const uint8_t>(data, len);
+    webrtc::rtcp::CommonHeader rtcp_block;
+    for (const uint8_t* next_block = packet.begin(); next_block != packet.end();
+            next_block = rtcp_block.NextPacket())
+    {
+        ptrdiff_t remaining_block_size = packet.end() - next_block;
+        // Parse 成功返回 true; payload_ 已跳过4字节头, 故 NextPacket() 无需再加头部长度
+        if (!rtcp_block.Parse(next_block, remaining_block_size)) {
+            if (next_block == packet.begin()) {
+                // 首块非法 -> 整个复合包不可信, 直接丢弃
+                RTC_LOG(LS_WARNING) << "invalid incoming rtcp packet";
+                return;
+            }
+
+            // 中间块非法(截断/脏数据): 保留已解析部分, 计数后停止解析
+            // 必须 break, 否则 NextPacket() 基于不可信状态推进可能越界/死循环
+            break;
+        }
+
+        switch (rtcp_block.type()) {
+            case webrtc::rtcp::ReceiverReport::kPacketType:
+            {
+                webrtc::rtcp::ReceiverReport rr;
+                if (rr.Parse(rtcp_block)) {
+                    if (rr.report_blocks().size() > 0) {
+                        for (auto report_block : rr.report_blocks()) {
+                            RTC_LOG(LS_INFO)
+                                << "=======source_ssrc: " << report_block.source_ssrc()
+                                << ", fraction_lost: " << report_block.fraction_lost()
+                                << ", cumulative_lost: "
+                                << report_block.cumulative_lost_signed()
+                                << ", extended_high_seq_num: "
+                                << report_block.extended_high_seq_num()
+                                << ", jitter: " << report_block.jitter()
+                                << ", last_sr: " << report_block.last_sr()
+                                << ", delay_since_last_sr: "
+                                << report_block.delay_since_last_sr();
+                        }
+                    }
+                }
+            } break;
+            default:
+                RTC_LOG(LS_WARNING) << "unknown rtcp packet_type: " << rtcp_block.type();
+                break;
+        }
+    }
+}
+
+void PeerConnection::OnLocalRtcpPacket(webrtc::MediaType media_type,
+            const uint8_t* data, size_t len)
+{
+    RTC_LOG(LS_WARNING) << "============on local rtcp packet, len: " << len;
+    DebugCompoundRtcpPacket(data, len);
+    // 将本地打包好的rtcp包，发送给对方
+    SendRtcp((const char*)data, len);
 }
 
 } // namespace xrtc

@@ -8,6 +8,14 @@
 
 namespace xrtc {
 
+class RtpRtcpModuleObserver {
+public:
+    virtual ~RtpRtcpModuleObserver() {}
+
+    virtual void OnLocalRtcpPacket(webrtc::MediaType media_type,
+            const uint8_t* data, size_t len) = 0;
+};
+
 struct RtpRtcpConfig {
     EventLoop* el = nullptr;
     webrtc::Clock* clock = nullptr;
@@ -15,6 +23,7 @@ struct RtpRtcpConfig {
     uint32_t local_media_ssrc = 0;
     ReceiveStat* receive_stat = nullptr; // 接收统计指针(4.10 接入), 传给 RTCPSender 作 RR 报告块数据源
     absl::optional<uint32_t> rtcp_report_interval_ms;
+    RtpRtcpModuleObserver* rtp_rtcp_module_observer = nullptr;
 };
 
 } // namespace xrtc

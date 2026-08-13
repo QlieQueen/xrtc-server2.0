@@ -15,6 +15,7 @@ std::unique_ptr<RtpRtcpImpl> CreateRtpRtcpModule(
     // 把 VideoReceiveStream 持有的 ReceiveStat 传给 RTCP 模块,
     // 使 RTCPSender 能拿到接收统计构建 RR 报告块
     config.receive_stat = receive_stat;
+    config.rtp_rtcp_module_observer = vconf.rtp_rtcp_module_observer;
 
     auto rtp_rtcp = std::make_unique<RtpRtcpImpl>(config);
     rtp_rtcp->SetRtcpStatus(webrtc::RtcpMode::kCompound);
