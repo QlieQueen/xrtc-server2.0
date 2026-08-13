@@ -3,6 +3,8 @@
 
 #include <map>
 #include <set>
+
+#include <rtc_base/random.h>
 #include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/report_block.h>
 
@@ -33,6 +35,8 @@ public:
     // 设置是否为发送端(true生成SR, false生成RR)
     void SetSendingStatus(bool sending) { sending_ = sending; }
 
+    uint32_t cur_report_interval_ms() const { return cur_report_interval_ms_; }
+
 private:
     class PacketSender; // 复合RTCP包打包器, 完整定义在 rtcp_sender.cpp
 
@@ -59,6 +63,7 @@ private:
 
 private:
     webrtc::Clock* clock_;
+    bool audio_;
     uint32_t ssrc_;
     ReceiveStat* receive_stat_; // 接收统计(config 传入, 非拥有; 生命周期归 VideoReceiveStream)
     // 当前RTCP发送模式, 默认关闭
@@ -67,6 +72,9 @@ private:
     bool sending_ = false;
     // 复合包最大大小(IP_PACKET_SIZE 1500 - IP头20B - UDP头8B), 保证一个报文一个以太网帧不分片
     size_t max_packet_size_;
+    uint32_t report_interval_ms_;
+    uint32_t cur_report_interval_ms_;
+    webrtc::Random random_;
 
     // 待发送的RTCP报文类型标记
     // type: 报文类型(对应RTCPPacketType)

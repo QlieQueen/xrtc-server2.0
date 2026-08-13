@@ -39,6 +39,9 @@ RtpRtcpImpl::~RtpRtcpImpl() {
 // RTCPSender内部由PrepareReport按发送模式决定本次是否附带SR/RR
 void RtpRtcpImpl::TimeToSendRTCP() {
     rtcp_sender_.SendRTCP(GetFeedbackState(), webrtc::kRtcpReport);
+    uint32_t interval = rtcp_sender_.cur_report_interval_ms();
+    RTC_LOG(LS_WARNING) << "==============cur report interval ms: " << interval;
+    el_->StartTimer(rtcp_report_timer_, interval * 1000);
 }
 
 // 设置RTCP开关: 开启时创建周期定时器(按conf配置间隔触发上报), 关闭时删除

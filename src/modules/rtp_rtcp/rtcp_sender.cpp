@@ -7,6 +7,13 @@
 
 namespace xrtc {
 
+namespace {
+
+const int kDefaultAudioReportInterval = 5000;
+const int kDefaultVideoReportInterval = 1000;
+
+} // namespace xrtc
+
 // PacketSender: 复合RTCP包打包器, 负责把多个RTCP包序列化进缓冲区, 攒齐后一次性发出
 class RTCPSender::PacketSender {
 public:
@@ -41,9 +48,15 @@ private:
 
 RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
     clock_(config.clock),
+    audio_(config.audio),
     ssrc_(config.local_media_ssrc),
     receive_stat_(config.receive_stat), // 4.10 接入接收统计, RR 报告块的数据源
-    max_packet_size_(IP_PACKET_SIZE - 28) // 去掉IP头部和UDP头部
+    max_packet_size_(IP_PACKET_SIZE - 28), // 去掉IP头部和UDP头部
+    report_interval_ms_(config.rtcp_report_interval_ms.value_or(
+                audio_ ? kDefaultAudioReportInterval :
+                         kDefaultVideoReportInterval)),
+    cur_report_interval_ms_(report_interval_ms_ / 2),
+    random_(clock_->TimeInMicroseconds())
 {
     // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
     // SR(发送端报告)等其他类型的构建函数在后续课程注册
@@ -162,15 +175,18 @@ void RTCPSender::PrepareReport() {
     } else {
         // kReducedSize模式: 仅在收到kRtcpReport请求时消费一次标记, 生成一次报告;
         // kCompound模式: 复合包总是携带报告
-        generate_report = ((method_ == webrtc::RtcpMode::kReducedSize &&
-            ConsumeFlag(webrtc::kRtcpReport)) ||
-            (method_ == webrtc::RtcpMode::kCompound));
+        generate_report = ((ConsumeFlag(webrtc::kRtcpReport) &&
+                (method_ == webrtc::RtcpMode::kReducedSize)) ||
+                (method_ == webrtc::RtcpMode::kCompound));
 
         // 发送端生成SR, 接收端生成RR, 均标记为volatile(本次发完即删)
         if (generate_report) {
             SetFlag(sending_ ? webrtc::kRtcpSr : webrtc::kRtcpRr, true);
         }
     }
+
+    uint32_t min_interval = report_interval_ms_;
+    cur_report_interval_ms_ = random_.Rand(min_interval * 1 / 2, min_interval * 3 / 2);
 }
 
 // 从接收统计取报告块: RTCP_MAX_REPORT_BLOCKS=31(一个 RR 包的块数上限);
@@ -216,8 +232,7 @@ void RTCPSender::BuildRR(const FeedbackState& feedback_state, PacketSender& send
     webrtc::rtcp::ReceiverReport rr;
     rr.SetSenderSsrc(ssrc_);
     rr.SetReportBlocks(CreateRtcpReportBlocks(feedback_state));
-    // rr 追加进复合包(sender.AppendPacket)留到后续课程, 当前先消除未用参数警告
-    (void)sender;
+    sender.AppendPacket(rr);
 }
 
 }
