@@ -1,11 +1,64 @@
 # v2_5 视频帧与 GOP 背景知识
 
 > 对应课程：`xrtcserver_v2_5.1` ~ `v2_5.5`（视频帧组装：depacketizer → PacketBuffer → RtpFrameObject → 组帧）
-> 状态：背景笔记（2026-08-14），代码从 5.1 起逐步落地
+> 状态：背景笔记（2026-08-14 首次；同日补 AU 概念），代码从 5.1 起逐步落地
 > 定位：**5.x 的物理前提**。5.x 的代码（PacketBuffer 组帧）背后全是视频编码层概念：分片、GOP、I/P 帧、帧内丢包、帧间预测。先打通背景，写代码才不迷路
 > 代码落点：5.1 depacketizer / 5.3 PacketBuffer / 5.4 RtpFrameObject / 5.5 组帧回调；6.x NACK（包级）；8.x PLI（帧级）
 > 双线贯通：作者另有 **手写客户端（推流端，不用 libwebrtc）** 课程线，手写 NALU → RTP **打包**；本篇第六节把它与本工程 RTP → NALU **拆包** 串成镜像对照
 > 配套：`RTP包格式详解`（RTP 头）、`v2_4.x`（接收统计）、`v2_4-RR包格式详解`
+
+## 〇、Access Unit（AU）：比特流里的"帧"
+
+### 0.1 定义：一帧画面的 NAL 集合
+
+H.264/H.265 规范：**AU = 一组 NAL unit 的集合，解码这组 NAL 输出一幅完整画面**（primary coded picture）。
+
+三层对应：
+
+```
+编码器输入：一幅图像（pixel 层面）
+编码器输出：一个 AU（bitstream 层面）= 一组 NAL
+解码器输出：一幅图像（回到 pixel 层面）
+```
+
+**讨论比特流 / WebRTC 时，口头的"一帧" = 一个 AU。**
+
+### 0.2 经典 AU 结构
+
+```
+[AU 边界]
+  SPS NALU        (non-VCL，序列参数)
+  PPS NALU        (non-VCL，图像参数)
+  SEI NALU        (non-VCL，可选，辅助信息)
+  IDR slice NALU  (VCL，真正的图像数据)
+[AU 边界]
+```
+
+普通 P 帧的 AU 只有 slice NALU——**一帧 = 一个 AU = 一个 slice NALU 是默认形态**；4K 大帧可切成多个 slice，AU 里就是多个 slice NALU。
+
+### 0.3 两个精确点
+
+- **SPS/PPS 可内可外**：规范允许带内（和 IDR 一起打进 AU）或带外单独传（如 SDP `sprop-parameter-sets`）。实际编码器（x264/FFmpeg）经典做法是**打进每个 IDR AU 的前面**。打包时同一 AU 的 NAL 按"**小聚合、大分片**"装进该帧的 RTP 包：小的完整 NAL（SPS/PPS/SEI）→ **STAP-A** 聚合；大的 NAL（通常是 IDR slice）→ **FU-A** 分片（STAP-A 要求 NAL 完整，装不下大 IDR）。
+- **VCL vs non-VCL**：slice 是 VCL（真正的图像编码数据，出图靠它），SPS/PPS/SEI 是 non-VCL（让解码器"知道怎么解"的辅助数据）。
+
+### 0.4 与 RTP 的对应：timestamp = AU 边界
+
+```
+一个 AU ──打包──> 一组同 timestamp 的 RTP 包（seq 递增，末包 M=1）
+一个 timestamp 值 = 一个 AU —— RTP 层划 AU 边界的依据
+```
+
+下面第一节讲的"一帧被切成多个 RTP 包"，里面的"一帧"指的就是一个 AU。
+
+### 0.5 概念链闭环
+
+```
+画面(pixel) → 编码 → AU(NAL集合) → 打包 → RTP包(同timestamp, M收尾)
+   ↑                                             ↓
+画面(pixel) ← 解码 ← AU(NAL集合) ← 组帧 ← RTP包（PacketBuffer 5.3~5.5）
+```
+
+> 一句话：**AU 是比特流里的"帧"——一帧 = 一个 AU = 一组 NAL；经典 IDR AU = SPS + PPS + IDR slice；RTP 层用 timestamp 认 AU 边界。**
 
 ## 一、一帧 → 多个 RTP 包：为什么、怎么判断
 
@@ -284,4 +337,4 @@ void RtpVideoStreamReceiver::OnReceivedPayloadData(...)
 
 ## 八、一句话记忆
 
-> **一帧被切成多个 RTP 包，靠 timestamp 认亲、靠 seq 排队、靠 M 位收尾；丢一包坏一帧（帧内），断一帧废一串（帧间参考链）——NACK 是包级自救，PLI 是帧级重建，5.x 的组帧主要为 PLI 提供判断燃料。**
+> **一帧 = 一个 AU（解码输出一幅画面的 NAL 集合），被切成多个 RTP 包，靠 timestamp 认亲、靠 seq 排队、靠 M 位收尾；丢一包坏一帧（帧内），断一帧废一串（帧间参考链）——NACK 是包级自救，PLI 是帧级重建，5.x 的组帧主要为 PLI 提供判断燃料。**
