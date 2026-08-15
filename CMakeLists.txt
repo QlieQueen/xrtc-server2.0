@@ -28,6 +28,7 @@ file(GLOB all_src
     "./src/ice/*.cpp"
     "./src/video/*.cpp"
     "./src/modules/rtp_rtcp/*.cpp"
+    "./src/modules/video_coding/*.cpp"
 )
 
 add_executable(xrtcserver ${all_src})
