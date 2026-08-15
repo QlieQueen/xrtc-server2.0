@@ -9,6 +9,7 @@
 #include "modules/rtp_rtcp/receive_stat.h"
 #include "modules/rtp_rtcp/rtp_rtcp_impl.h"
 #include "modules/video_coding/rtp_frame_object.h"
+#include "modules/video_coding/nack_requester.h"
 
 namespace xrtc {
 
@@ -47,6 +48,7 @@ private:
     std::unique_ptr<webrtc::VideoRtpDepacketizer> video_rtp_depacketizer_;
     // 乱序缓存 + 组帧器: 环形 vector, seq % size 映射槽位, 512 动态扩至 2048
     std::unique_ptr<webrtc::video_coding::PacketBuffer> packet_buffer_;
+    std::unique_ptr<NackRequester> nack_module_;
 };
 
 } // namespace xrtc

@@ -39,7 +39,8 @@ RtpVideoStreamReceiver::RtpVideoStreamReceiver(const VideoReceiveStreamConfig& c
     // 起始 512 槽位, 冲突时动态翻倍扩容, 上限 2048(均为2的幂)
     // InsertPacket 内部识别完整帧("两触发三闸门", 见 v2_5.2 笔记)
     packet_buffer_(std::make_unique<webrtc::video_coding::PacketBuffer>(
-                kPacketBufferStartSize, kPacketBufferMaxSize))
+                kPacketBufferStartSize, kPacketBufferMaxSize)),
+    nack_module_(std::make_unique<NackRequester>(config.clock))
 {
     // 把远端媒体流SSRC交给RTCP模块: RTCPReceiver解析SR时过滤用
     rtp_rtcp_->SetRemoteSsrc(config.rtp.remote_ssrc);
@@ -91,6 +92,10 @@ void RtpVideoStreamReceiver::OnReceivedPayloadData(
     // 帧尾必须靠 RTP 头 M 位补 —— FindFrames 触发组帧的依据
     webrtc::RTPVideoHeader& video_header = packet->video_header;
     video_header.is_last_packet_in_frame |= rtp_packet.Marker();
+
+    if (nack_module_) {
+        nack_module_->OnReceivedPacket(rtp_packet.SequenceNumber());
+    }
 
     // 进环形缓冲组帧; 结果(完整帧的包集合 / 缓冲被清)交给 OnInsertedPacket
     OnInsertedPacket(packet_buffer_->InsertPacket(std::move(packet)));
