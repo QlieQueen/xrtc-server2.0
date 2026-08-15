@@ -3,6 +3,7 @@
 
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
 #include <modules/rtp_rtcp/source/video_rtp_depacketizer_h264.h>
+#include <modules/video_coding/packet_buffer.h>
 
 #include "video/video_receive_stream_config.h"
 #include "modules/rtp_rtcp/receive_stat.h"
@@ -33,11 +34,16 @@ private:
             const webrtc::RtpPacketReceived& packet,
             const webrtc::RTPVideoHeader& video_header);
 
+    // 插包结果处理: packets 是完整帧的包集合(5.5 在这里切帧 → RtpFrameObject)
+    void OnInsertedPacket(
+            webrtc::video_coding::PacketBuffer::InsertResult result);
 private:
     VideoReceiveStreamConfig config_;
     ReceiveStat* rtp_receive_stat_;   // 裸指针: 借用, 不负责释放
     std::unique_ptr<RtpRtcpImpl> rtp_rtcp_;
     std::unique_ptr<webrtc::VideoRtpDepacketizer> video_rtp_depacketizer_;
+    // 乱序缓存 + 组帧器: 环形 vector, seq % size 映射槽位, 512 动态扩至 2048
+    std::unique_ptr<webrtc::video_coding::PacketBuffer> packet_buffer_;
 };
 
 } // namespace xrtc
