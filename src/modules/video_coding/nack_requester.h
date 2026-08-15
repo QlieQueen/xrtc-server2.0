@@ -2,9 +2,11 @@
 #define XRTCSERVER_MODULES_VIDEO_CODING_NACK_REQUESTER_H_
 
 #include <map>
+#include <vector>
 
 #include <system_wrappers/include/clock.h>
 #include <rtc_base/numerics/sequence_number_util.h>
+#include <rtc_base/third_party/sigslot/sigslot.h>
 
 namespace xrtc {
 
@@ -17,7 +19,16 @@ public:
     // 旧包分支返回: 重传补到 → 该包被重传过几次; 纯乱序 → 0
     int OnReceivedPacket(uint16_t seq_num);
 
+public:
+    sigslot::signal1<const std::vector<uint16_t>> SignalNackSend;
+
 private:
+    enum NackFilterOptions {
+        kSeqNumOnly, // 基于丢包时触发
+        kTimeOnly,   // 定时触发
+        kSeqNumAndTime, // 同时触发
+    };
+
     // 缺失包档案: "曾经判定为丢失"的包 + 重传控制信息
     // DescendingSeqNumComp = 回绕感知降序比较(不用 std::less:
     // 16位 seq 回绕后数值大小关系反转, 排序必须回绕安全)
@@ -32,6 +43,9 @@ private:
         int64_t send_at_time;    // 上次对该包发 NACK 的时间(-1 = 还没发过, 6.1.3 用)
         int retries;             // 已重传次数(重传超限放弃的判断依据)
     };
+
+    void AddPacketsToNack(uint16_t seq_start, uint16_t seq_num_end);
+    std::vector<uint16_t> GetNackBatch(NackFilterOptions option);
 
 private:
     webrtc::Clock* clock_;

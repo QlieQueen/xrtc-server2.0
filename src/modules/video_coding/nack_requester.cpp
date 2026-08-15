@@ -4,6 +4,12 @@
 
 namespace xrtc {
 
+namespace {
+
+const int kMaxNackRetries = 10;
+
+} // namespace
+
 NackRequester::NackRequester(webrtc::Clock* clock) :
     clock_(clock)
 {
@@ -53,11 +59,54 @@ int NackRequester::OnReceivedPacket(uint16_t seq_num) {
         return nacks_send_for_packet;
     }
 
-    // ④ 新包分支: seq_num 比前沿更新(发送端更晚发出)
-    //    (6.1.3 补全: 更新前沿 + 检查"前沿到 seq_num 之间的缺口" → 缺口即缺失包, 记入 nack_list_)
+    // ④ 新包分支: 前沿推进, 沿途缺口记入缺失档案, 触发一次 NACK 点名
+    AddPacketsToNack(newest_seq_num_ + 1, seq_num);
+    newest_seq_num_ = seq_num;
 
+    std::vector<uint16_t> nack_batch = GetNackBatch(kSeqNumOnly);
+    if (!nack_batch.empty()) {
+        SignalNackSend(nack_batch);
+    }
 
     return 0;
 }
+
+// 把 (start, end) 区间内所有序号记入缺失档案
+void NackRequester::AddPacketsToNack(uint16_t seq_num_start, uint16_t seq_num_end) {
+    for (uint16_t  seq_num = seq_num_start; seq_num != seq_num_end; ++seq_num) {
+        NackInfo nack_info(seq_num, clock_->TimeInMilliseconds());
+        nack_list_[seq_num] = nack_info;
+    }
+}
+
+// 首次点名: 只挑没发过 NACK 的包(send_at_time == -1), 置重传次数/时间, 超 10 次放弃
+std::vector<uint16_t> NackRequester::GetNackBatch(NackFilterOptions option) {
+    bool consider_seq_num = (option != kTimeOnly);
+    int64_t now = clock_->TimeInMilliseconds();
+    std::vector<uint16_t> nack_batch;
+    auto it = nack_list_.begin();
+    while (it != nack_list_.end()) {
+        // 判断基于丢包触发nack的条件是否满足
+        bool can_nack_seq_num_passed = (it->second.send_at_time == -1);
+        if (consider_seq_num && can_nack_seq_num_passed) {
+            // 触发nack的发送
+            nack_batch.emplace_back(it->second.seq_num);
+            ++it->second.retries;
+            it->second.send_at_time = now;
+            // 当该包重传的次数已经达到10次，不要再重传了
+            if (it->second.retries >= kMaxNackRetries) {
+                nack_list_.erase(it++);
+            } else {
+                ++it;
+            }
+
+            continue;
+        }
+        ++it;
+    }
+
+    return nack_batch;
+}
+
 
 } // namespace xrtc
