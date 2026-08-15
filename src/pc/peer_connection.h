@@ -91,6 +91,7 @@ private:
 
     void OnLocalRtcpPacket(webrtc::MediaType media_type,
             const uint8_t* data, size_t len) override;
+    void OnFrame(std::unique_ptr<RtpFrameObject> frame) override;
 
     webrtc::MediaType GetMediaType(uint32_t ssrc) const;
     void CreateVideoReceiveStream(VideoContentDescription* video_content);

@@ -8,6 +8,7 @@
 #include "video/video_receive_stream_config.h"
 #include "modules/rtp_rtcp/receive_stat.h"
 #include "modules/rtp_rtcp/rtp_rtcp_impl.h"
+#include "modules/video_coding/rtp_frame_object.h"
 
 namespace xrtc {
 
@@ -37,6 +38,8 @@ private:
     // 插包结果处理: packets 是完整帧的包集合(5.5 在这里切帧 → RtpFrameObject)
     void OnInsertedPacket(
             webrtc::video_coding::PacketBuffer::InsertResult result);
+    void OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame);
+
 private:
     VideoReceiveStreamConfig config_;
     ReceiveStat* rtp_receive_stat_;   // 裸指针: 借用, 不负责释放

@@ -5,6 +5,7 @@
 
 #include "base/event_loop.h"
 #include "modules/rtp_rtcp/receive_stat.h"
+#include "modules/video_coding/rtp_frame_object.h"
 
 namespace xrtc {
 
@@ -14,6 +15,7 @@ public:
 
     virtual void OnLocalRtcpPacket(webrtc::MediaType media_type,
             const uint8_t* data, size_t len) = 0;
+    virtual void OnFrame(std::unique_ptr<RtpFrameObject> frame) = 0;
 };
 
 struct RtpRtcpConfig {

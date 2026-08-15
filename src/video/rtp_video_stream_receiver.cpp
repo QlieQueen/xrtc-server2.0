@@ -106,6 +106,31 @@ void RtpVideoStreamReceiver::OnInsertedPacket(
     if (result.packets.size() <= 0) {
         return;
     }
+
+    webrtc::video_coding::PacketBuffer::Packet* first_packet = nullptr;
+
+    for (auto& packet : result.packets) {
+        if (packet->is_first_packet_in_frame()) {
+            first_packet = packet.get();
+        }
+
+        if (packet->is_last_packet_in_frame()) {
+            webrtc::video_coding::PacketBuffer::Packet* last_packet 
+                                                            = packet.get();
+            OnAssembledFrame(std::make_unique<RtpFrameObject>(
+                        first_packet->seq_num,
+                        last_packet->seq_num,
+                        first_packet->codec(),
+                        first_packet->video_header));
+        }
+    }
+}
+
+// 一个完整帧组装完成
+void RtpVideoStreamReceiver::OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame) {
+    if (config_.rtp_rtcp_module_observer) {
+        config_.rtp_rtcp_module_observer->OnFrame(std::move(frame));
+    }
 }
 
 // 收到RTCP数据: 转给RTCP模块(RtpRtcpImpl), 由RTCPReceiver拆包解析
