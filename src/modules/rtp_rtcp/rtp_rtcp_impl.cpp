@@ -44,6 +44,11 @@ void RtpRtcpImpl::TimeToSendRTCP() {
     el_->StartTimer(rtcp_report_timer_, interval * 1000);
 }
 
+void RtpRtcpImpl::SendNack(const std::vector<uint16_t>& nack_list) {
+    rtcp_sender_.SendRTCP(GetFeedbackState(), webrtc::kRtcpNack,
+            nack_list.size(), nack_list.data());
+}
+
 // 设置RTCP开关: 开启时创建周期定时器(按conf配置间隔触发上报), 关闭时删除
 void RtpRtcpImpl::SetRtcpStatus(webrtc::RtcpMode method) {
     if (method == webrtc::RtcpMode::kOff) {

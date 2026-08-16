@@ -44,6 +44,7 @@ RtpVideoStreamReceiver::RtpVideoStreamReceiver(const VideoReceiveStreamConfig& c
 {
     // 把远端媒体流SSRC交给RTCP模块: RTCPReceiver解析SR时过滤用
     rtp_rtcp_->SetRemoteSsrc(config.rtp.remote_ssrc);
+    nack_module_->SignalNackSend.connect(this, &RtpVideoStreamReceiver::OnNackSend);
 }
 
 RtpVideoStreamReceiver::~RtpVideoStreamReceiver() {
@@ -139,6 +140,17 @@ void RtpVideoStreamReceiver::OnAssembledFrame(std::unique_ptr<RtpFrameObject> fr
     if (config_.rtp_rtcp_module_observer) {
         config_.rtp_rtcp_module_observer->OnFrame(std::move(frame));
     }
+}
+
+void RtpVideoStreamReceiver::OnNackSend(const std::vector<uint16_t>& nack_list) {
+    /*
+    std::stringstream ss;
+    for (auto seq_num : nack_list) {
+        ss << seq_num << ", ";
+    }
+    RTC_LOG(LS_WARNING) << "============nack list: " << ss.str();
+    */
+   rtp_rtcp_->SendNack(nack_list);
 }
 
 // 收到RTCP数据: 转给RTCP模块(RtpRtcpImpl), 由RTCPReceiver拆包解析

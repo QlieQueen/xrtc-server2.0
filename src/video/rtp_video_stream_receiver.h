@@ -4,6 +4,7 @@
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
 #include <modules/rtp_rtcp/source/video_rtp_depacketizer_h264.h>
 #include <modules/video_coding/packet_buffer.h>
+#include <rtc_base/third_party/sigslot/sigslot.h>
 
 #include "video/video_receive_stream_config.h"
 #include "modules/rtp_rtcp/receive_stat.h"
@@ -16,7 +17,7 @@ namespace xrtc {
 // 视频RTP包接收器: 对应WebRTC VideoReceiveStream内部的同名类,
 // 负责接收RTP包并维护接收统计(序列号回绕/丢包/jitter), 触发RTCP RR
 // 当前为骨架, 接收逻辑后续课程填充
-class RtpVideoStreamReceiver {
+class RtpVideoStreamReceiver : public sigslot::has_slots<> {
 public:
     // config: 接收流配置 (含 clock)
     // rtp_receive_stat: 借用指针, 所有权在 VideoReceiveStream, 这里只负责往里喂包
@@ -40,6 +41,7 @@ private:
     void OnInsertedPacket(
             webrtc::video_coding::PacketBuffer::InsertResult result);
     void OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame);
+    void OnNackSend(const std::vector<uint16_t>& nack_list);
 
 private:
     VideoReceiveStreamConfig config_;

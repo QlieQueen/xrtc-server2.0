@@ -626,8 +626,10 @@ void PeerConnection::OnLocalRtcpPacket(webrtc::MediaType media_type,
 }
 
 void PeerConnection::OnFrame(std::unique_ptr<RtpFrameObject> frame) {
+    /*
     RTC_LOG(LS_WARNING) << "============new frame, frame type: " << frame->frame_type()
         << ", [" << frame->first_seq_num() << ", " << frame->last_seq_num() << "]";
+    */
 }
 
 } // namespace xrtc

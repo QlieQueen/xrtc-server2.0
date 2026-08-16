@@ -29,7 +29,10 @@ public:
     ~RTCPSender();
 
     // 发送指定类型的RTCP报文: 成功返回0, RTCP未开启(kOff)时返回-1
-    int SendRTCP(const FeedbackState& feedback_state, webrtc::RTCPPacketType packet_type);
+    int SendRTCP(const FeedbackState& feedback_state,
+            webrtc::RTCPPacketType packet_type,
+            int32_t nack_size = 0,
+            const uint16_t* nack_list = nullptr);
     // 设置RTCP发送模式(kOff/kCompound/kNonCompound)
     void SetRtcpStatus(webrtc::RtcpMode method);
     // 设置是否为发送端(true生成SR, false生成RR)
@@ -38,11 +41,14 @@ public:
     uint32_t cur_report_interval_ms() const { return cur_report_interval_ms_; }
 
 private:
+    class RtcpContext;
     class PacketSender; // 复合RTCP包打包器, 完整定义在 rtcp_sender.cpp
 
     // 计算复合RTCP包: 将本次报文类型标记入集合, 并组装发送
-    absl::optional<uint32_t> ComputeCompundRTCPPacket(
+    absl::optional<uint32_t> ComputeCompoundRTCPPacket(
             const FeedbackState& feedback_state, 
+            int32_t nack_size,
+            const uint16_t* nack_list,
             webrtc::RTCPPacketType packet_type,
             PacketSender& sender);
     // 标记某报文类型为待发送, is_volatile=true 表示一次性标记(发送后删除)
@@ -59,7 +65,7 @@ private:
             const FeedbackState& feedback_state);
 
     // 构建RR(接收端统计报告)报文, 把打包结果追加到复合包
-    void BuildRR(const FeedbackState& feedback_state, PacketSender& sender);
+    void BuildRR(const RtcpContext& ctx, PacketSender& sender);
 
 private:
     webrtc::Clock* clock_;
@@ -100,7 +106,7 @@ private:
     std::set<ReportFlag> report_flags_;
 
     // 构建函数指针类型: 指向RTCPSender成员函数, 无参数无返回值
-    typedef void (RTCPSender::*BuilderFunc)(const FeedbackState& feedback_state, PacketSender& sender);
+    typedef void (RTCPSender::*BuilderFunc)(const RtcpContext& ctx, PacketSender& sender);
     // 报文类型(type) -> 构建函数 映射表, 在构造函数中注册
     std::map<uint32_t, BuilderFunc> builders_;
 };

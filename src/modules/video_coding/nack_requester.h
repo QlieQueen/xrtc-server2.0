@@ -30,7 +30,7 @@ public:
     int OnReceivedPacket(uint16_t seq_num, bool is_keyframe, bool is_retransmitted);
 
 public:
-    sigslot::signal1<const std::vector<uint16_t>> SignalNackSend;
+    sigslot::signal1<const std::vector<uint16_t>&> SignalNackSend;
 
 private:
     enum NackFilterOptions {

@@ -21,6 +21,7 @@ public:
     void IncomingRtcpPacket(const uint8_t* data, size_t len);
     // 设置远端媒体流SSRC: 转交RTCPReceiver, 用于SR包过滤
     void SetRemoteSsrc(uint32_t ssrc);
+    void SendNack(const std::vector<uint16_t>& nack_list);
 
 private:
     RTCPSender::FeedbackState GetFeedbackState();
