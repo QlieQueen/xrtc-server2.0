@@ -6,22 +6,39 @@ namespace xrtc {
 
 namespace {
 
-const int kMaxNackRetries = 10;
+const int kMaxNackRetries = 10;    // 单个包最大重传次数, 超限放弃(等关键帧兜底)
+const int kUpdateIntervalMs = 20;  // NACK 检查节拍: 每 20ms 定时触发一次重传判定
+const int64_t kDefaultRttMs = 100; // 重传间隔默认值(ms): 无实测 RTT 时两次重传至少等 100ms
+
+void nack_timer_cb(EventLoop*, TimerWatcher*, void* data) {
+    NackRequester* requester = (NackRequester*)data;
+    requester->ProcessNacks();
+}
 
 } // namespace
 
-NackRequester::NackRequester(webrtc::Clock* clock) :
-    clock_(clock)
+NackRequester::NackRequester(webrtc::Clock* clock, EventLoop* el) :
+    clock_(clock),
+    el_(el),
+    rtt_ms_(kDefaultRttMs)
 {
-
+    // 注册 20ms 周期定时器: 驱动 kTimeOnly 重传(RTT 退避再次点名)
+    nack_timer_ = el_->CreateTimer(nack_timer_cb, this, true);
+    el_->StartTimer(nack_timer_, kUpdateIntervalMs * 1000);
 }
 
 NackRequester::~NackRequester() {
+}
 
+void NackRequester::ProcessNacks() {
+    // 定时触发: 重传过的包按 RTT 退避再次点名(send_at_time 已置位的包)
+    auto nack_batch = GetNackBatch(kTimeOnly);
+    if (!nack_batch.empty()) {
+        SignalNackSend(nack_batch);
+    }
 }
 
 int NackRequester::OnReceivedPacket(uint16_t seq_num) {
-    //RTC_LOG(LS_WARNING) << "=============seq_num: " << seq_num;
     // ① 首包: 初始化接收前沿(newest_seq_num_), 还没有历史可比较
     if (!initialized_) {
         newest_seq_num_ = seq_num;
@@ -82,19 +99,27 @@ void NackRequester::AddPacketsToNack(uint16_t seq_num_start, uint16_t seq_num_en
 // 首次点名: 只挑没发过 NACK 的包(send_at_time == -1), 置重传次数/时间, 超 10 次放弃
 std::vector<uint16_t> NackRequester::GetNackBatch(NackFilterOptions option) {
     bool consider_seq_num = (option != kTimeOnly);
+    bool consider_timestamp = (option != kSeqNumOnly); // 定时触发分支
     int64_t now = clock_->TimeInMilliseconds();
     std::vector<uint16_t> nack_batch;
     auto it = nack_list_.begin();
     while (it != nack_list_.end()) {
-        // 判断基于丢包触发nack的条件是否满足
+        // 丢包触发: 没发过 NACK 的包(send_at_time == -1)首次点名
         bool can_nack_seq_num_passed = (it->second.send_at_time == -1);
-        if (consider_seq_num && can_nack_seq_num_passed) {
+        // 定时触发: 距上次重传已超过 RTT, 再点一次名(防重传包也丢了, 两次间隔≥RTT)
+        bool can_nack_timestamp_passed = (now - it->second.send_at_time) > rtt_ms_;
+
+        if ((consider_seq_num && can_nack_seq_num_passed) ||
+            (consider_timestamp && can_nack_timestamp_passed))
+        {
             // 触发nack的发送
             nack_batch.emplace_back(it->second.seq_num);
             ++it->second.retries;
             it->second.send_at_time = now;
             // 当该包重传的次数已经达到10次，不要再重传了
             if (it->second.retries >= kMaxNackRetries) {
+                RTC_LOG(LS_WARNING) << "sequence number: " << it->second.seq_num
+                    << " removed from nack list due to max retries";
                 nack_list_.erase(it++);
             } else {
                 ++it;

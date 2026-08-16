@@ -40,7 +40,7 @@ RtpVideoStreamReceiver::RtpVideoStreamReceiver(const VideoReceiveStreamConfig& c
     // InsertPacket 内部识别完整帧("两触发三闸门", 见 v2_5.2 笔记)
     packet_buffer_(std::make_unique<webrtc::video_coding::PacketBuffer>(
                 kPacketBufferStartSize, kPacketBufferMaxSize)),
-    nack_module_(std::make_unique<NackRequester>(config.clock))
+    nack_module_(std::make_unique<NackRequester>(config.clock, config.el))
 {
     // 把远端媒体流SSRC交给RTCP模块: RTCPReceiver解析SR时过滤用
     rtp_rtcp_->SetRemoteSsrc(config.rtp.remote_ssrc);

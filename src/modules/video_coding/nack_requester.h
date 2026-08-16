@@ -8,12 +8,19 @@
 #include <rtc_base/numerics/sequence_number_util.h>
 #include <rtc_base/third_party/sigslot/sigslot.h>
 
+#include "base/event_loop.h"
+
 namespace xrtc {
 
 class NackRequester {
 public:
-    NackRequester(webrtc::Clock* clock);
+    NackRequester(webrtc::Clock* clock, EventLoop* el);
     ~NackRequester();
+
+    // 定时器入口: 周期触发 kTimeOnly 重传(RTT 退避点名)
+    void ProcessNacks();
+    // 外部喂入实测 RTT(重传间隔依据; 当前无人调用, 用默认 100ms)
+    void UpdateRtt(int64_t rtt_ms) { rtt_ms_ = rtt_ms; }
 
     // 返回某序号包的重传次数(times_nacked, 流入 Packet::times_nacked)
     // 旧包分支返回: 重传补到 → 该包被重传过几次; 纯乱序 → 0
@@ -49,11 +56,15 @@ private:
 
 private:
     webrtc::Clock* clock_;
+    EventLoop* el_;
+    TimerWatcher* nack_timer_ = nullptr;   // 20ms 周期定时器 → ProcessNacks
     bool initialized_ = false;   // 是否收到过第一个包
     // 接收"前沿": 已收到包中发送端最晚发出的序号
     // 注意"新旧" = 发送端发出的先后, 与到达顺序无关(回绕后数值大小会反转, 见 v2_6.1.2 笔记)
     uint16_t newest_seq_num_ = 0;
     std::map<uint16_t, NackInfo, webrtc::DescendingSeqNumComp<uint16_t>> nack_list_;
+    // 重传间隔基准(两次重传之间至少等这么久); 默认 100ms, 可 UpdateRtt 喂实测值
+    int64_t rtt_ms_;
 };
 
 } // namespace xrtc
