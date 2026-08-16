@@ -9,6 +9,7 @@ namespace {
 const int kMaxNackRetries = 10;    // 单个包最大重传次数, 超限放弃(等关键帧兜底)
 const int kUpdateIntervalMs = 20;  // NACK 检查节拍: 每 20ms 定时触发一次重传判定
 const int64_t kDefaultRttMs = 100; // 重传间隔默认值(ms): 无实测 RTT 时两次重传至少等 100ms
+const uint16_t kMaxPacketAge = 10000; // 缺失包过期线: 距最新序号超过 10000 不再追
 
 void nack_timer_cb(EventLoop*, TimerWatcher*, void* data) {
     NackRequester* requester = (NackRequester*)data;
@@ -90,6 +91,11 @@ int NackRequester::OnReceivedPacket(uint16_t seq_num) {
 
 // 把 (start, end) 区间内所有序号记入缺失档案
 void NackRequester::AddPacketsToNack(uint16_t seq_num_start, uint16_t seq_num_end) {
+    // 清掉距最新序号(seq_num_end)超过 kMaxPacketAge 的过期缺失包
+    // lower_bound 返回过期线边界迭代器, 其前的包都太旧, 不再追(等关键帧兜底)
+    auto it = nack_list_.lower_bound(seq_num_end - kMaxPacketAge);
+    nack_list_.erase(nack_list_.begin(), it);
+
     for (uint16_t  seq_num = seq_num_start; seq_num != seq_num_end; ++seq_num) {
         NackInfo nack_info(seq_num, clock_->TimeInMilliseconds());
         nack_list_[seq_num] = nack_info;
