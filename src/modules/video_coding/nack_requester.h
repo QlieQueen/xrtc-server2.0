@@ -10,6 +10,7 @@
 #include <rtc_base/third_party/sigslot/sigslot.h>
 
 #include "base/event_loop.h"
+#include "modules/video_coding/histogram.h"
 
 namespace xrtc {
 
@@ -26,11 +27,7 @@ public:
     // 返回某序号包的重传次数(times_nacked, 流入 Packet::times_nacked)
     // 旧包分支返回: 重传补到 → 该包被重传过几次; 纯乱序 → 0
     // is_keyframe: 本包是否关键帧首包(其 seq 记入 keyframe_list_ 锚点)
-    int OnReceivedPacket(uint16_t seq_num, bool is_keyframe);
-
-private:
-    // nack_list_ 超限时清掉关键帧之前的缺失包(参考链已断, 重传无用), 腾空间
-    bool RemovePacketsUntilKeyFrame();
+    int OnReceivedPacket(uint16_t seq_num, bool is_keyframe, bool is_retransmitted);
 
 public:
     sigslot::signal1<const std::vector<uint16_t>> SignalNackSend;
@@ -46,12 +43,16 @@ private:
     // DescendingSeqNumComp = 回绕感知降序比较(不用 std::less:
     // 16位 seq 回绕后数值大小关系反转, 排序必须回绕安全)
     struct NackInfo {
-        NackInfo() : seq_num(0), created_time(-1), send_at_time(-1),
+        NackInfo() : seq_num(0), send_at_seq_num(0),
+            created_time(-1), send_at_time(-1),
             retries(0) {}
-        NackInfo(uint16_t seq_num, int64_t created_time) :
-            seq_num(seq_num), created_time(created_time),
+        NackInfo(uint16_t seq_num, uint16_t send_at_seq_num, int64_t created_time) :
+            seq_num(seq_num),
+            send_at_seq_num(send_at_seq_num),
+            created_time(created_time),
             send_at_time(-1), retries(0) {}
         uint16_t seq_num;        // 缺失包的序号
+        uint16_t send_at_seq_num; // 序号等待线: 前沿推进到此处仍缺才判定真丢(seq + N, N 来自乱序直方图)
         int64_t created_time;    // 记入缺失的时间
         int64_t send_at_time;    // 上次对该包发 NACK 的时间(-1 = 还没发过, 6.1.3 用)
         int retries;             // 已重传次数(重传超限放弃的判断依据)
@@ -59,6 +60,10 @@ private:
 
     void AddPacketsToNack(uint16_t seq_start, uint16_t seq_num_end);
     std::vector<uint16_t> GetNackBatch(NackFilterOptions option);
+    // nack_list_ 超限时清掉关键帧之前的缺失包(参考链已断, 重传无用), 腾空间
+    bool RemovePacketsUntilKeyFrame();
+    void UpdateReorderingStat(uint16_t seq_num);
+    size_t WaitNumberOfPackets(float probability);
 
 private:
     webrtc::Clock* clock_;
@@ -75,6 +80,7 @@ private:
     int64_t rtt_ms_;
     // 乱序等待窗口(ms): 延迟首次点名给乱序包到达时间; 0 = 不等待(预留, 无人设置)
     int64_t send_nack_delay_ms_ = 0;
+    Histogram reordering_histogram_; // 乱序距离直方图: WaitNumberOfPackets 查等待线偏移 N
 };
 
 } // namespace xrtc

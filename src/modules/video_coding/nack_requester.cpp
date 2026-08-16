@@ -11,6 +11,8 @@ const int kUpdateIntervalMs = 20;  // NACK 检查节拍: 每 20ms 定时触发�
 const int64_t kDefaultRttMs = 100; // 重传间隔默认值(ms): 无实测 RTT 时两次重传至少等 100ms
 const uint16_t kMaxPacketAge = 10000; // 缺失包过期线: 距最新序号超过 10000 不再追
 const int kMaxNackPackets = 1000; // nack_list_ 容量上限: 超限清关键帧前的缺失包, 仍超限则全清+请求关键帧
+const int kMaxReorderingPackets = 128;
+const int kNumReoderingBuckets = 10;
 
 void nack_timer_cb(EventLoop*, TimerWatcher*, void* data) {
     NackRequester* requester = (NackRequester*)data;
@@ -22,7 +24,8 @@ void nack_timer_cb(EventLoop*, TimerWatcher*, void* data) {
 NackRequester::NackRequester(webrtc::Clock* clock, EventLoop* el) :
     clock_(clock),
     el_(el),
-    rtt_ms_(kDefaultRttMs)
+    rtt_ms_(kDefaultRttMs),
+    reordering_histogram_(kNumReoderingBuckets, kMaxReorderingPackets)
 {
     // 注册 20ms 周期定时器: 驱动 kTimeOnly 重传(RTT 退避再次点名)
     nack_timer_ = el_->CreateTimer(nack_timer_cb, this, true);
@@ -40,7 +43,9 @@ void NackRequester::ProcessNacks() {
     }
 }
 
-int NackRequester::OnReceivedPacket(uint16_t seq_num, bool is_keyframe) {
+int NackRequester::OnReceivedPacket(uint16_t seq_num, bool is_keyframe,
+        bool is_retransmitted)
+{
     // ① 首包: 初始化接收前沿(newest_seq_num_), 还没有历史可比较
     if (!initialized_) {
         newest_seq_num_ = seq_num;
@@ -78,6 +83,12 @@ int NackRequester::OnReceivedPacket(uint16_t seq_num, bool is_keyframe) {
             nacks_send_for_packet = nack_list_it->second.retries;
             nack_list_.erase(nack_list_it);
         }
+
+        if (!is_retransmitted) {
+            // 乱序包
+            UpdateReorderingStat(seq_num);
+        }
+
         return nacks_send_for_packet;
     }
 
@@ -101,6 +112,22 @@ int NackRequester::OnReceivedPacket(uint16_t seq_num, bool is_keyframe) {
     }
 
     return 0;
+}
+
+// 乱序统计: 旧包(非重传)到达时, 记它与前沿的距离入直方图
+void NackRequester::UpdateReorderingStat(uint16_t seq_num) {
+    size_t diff = webrtc::ReverseDiff(newest_seq_num_, seq_num);
+    reordering_histogram_.Add(diff);
+}
+
+// 查乱序直方图分位数: 返回 N, 至少 probability 比例的乱序包在 N 个序号内到达
+// 直方图无样本时返回 0(不等待, 直方图接入前退化为原行为)
+size_t NackRequester::WaitNumberOfPackets(float probability) {
+    if (reordering_histogram_.NumValues() == 0) {
+        return 0;
+    }
+
+    return reordering_histogram_.InverseCdf(probability);
 }
 
 // 超限清理: 删掉关键帧之前的缺失包(参考链已断, 重传也白费), 腾空间记新缺口
@@ -145,7 +172,9 @@ void NackRequester::AddPacketsToNack(uint16_t seq_num_start, uint16_t seq_num_en
     }
 
     for (uint16_t  seq_num = seq_num_start; seq_num != seq_num_end; ++seq_num) {
-        NackInfo nack_info(seq_num, clock_->TimeInMilliseconds());
+        // 等待线 = 缺口序号 + N: 等前沿推进到等待线仍缺, 才判定真丢点名(乱序包等期内自己到)
+        NackInfo nack_info(seq_num, seq_num + WaitNumberOfPackets(0.5),
+                clock_->TimeInMilliseconds());
         nack_list_[seq_num] = nack_info;
     }
 }
@@ -160,8 +189,9 @@ std::vector<uint16_t> NackRequester::GetNackBatch(NackFilterOptions option) {
     while (it != nack_list_.end()) {
         // 乱序等待闸门: 缺口创建后至少等 send_nack_delay_ms_ 才允许首次点名(给乱序包到达时间)
         bool delay_timeout = (now - it->second.created_time) >= send_nack_delay_ms_;
-        // 丢包触发: 没发过 NACK 的包(send_at_time == -1)首次点名
-        bool can_nack_seq_num_passed = (it->second.send_at_time == -1);
+        // 丢包触发: 没发过 NACK 且前沿已推进到等待线(send_at_seq_num = seq + N, 等够 N 个位置)才首次点名
+        bool can_nack_seq_num_passed = (it->second.send_at_time == -1) &&
+            webrtc::AheadOrAt(newest_seq_num_, it->second.send_at_seq_num);
         // 定时触发: 距上次重传已超过 RTT, 再点一次名(防重传包也丢了, 两次间隔≥RTT)
         bool can_nack_timestamp_passed = (now - it->second.send_at_time) > rtt_ms_;
 
