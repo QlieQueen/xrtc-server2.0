@@ -73,6 +73,8 @@ private:
     std::set<uint16_t, webrtc::DescendingSeqNumComp<uint16_t>> keyframe_list_;
     // 重传间隔基准(两次重传之间至少等这么久); 默认 100ms, 可 UpdateRtt 喂实测值
     int64_t rtt_ms_;
+    // 乱序等待窗口(ms): 延迟首次点名给乱序包到达时间; 0 = 不等待(预留, 无人设置)
+    int64_t send_nack_delay_ms_ = 0;
 };
 
 } // namespace xrtc

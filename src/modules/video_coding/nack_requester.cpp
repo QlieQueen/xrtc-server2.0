@@ -158,13 +158,15 @@ std::vector<uint16_t> NackRequester::GetNackBatch(NackFilterOptions option) {
     std::vector<uint16_t> nack_batch;
     auto it = nack_list_.begin();
     while (it != nack_list_.end()) {
+        // 乱序等待闸门: 缺口创建后至少等 send_nack_delay_ms_ 才允许首次点名(给乱序包到达时间)
+        bool delay_timeout = (now - it->second.created_time) >= send_nack_delay_ms_;
         // 丢包触发: 没发过 NACK 的包(send_at_time == -1)首次点名
         bool can_nack_seq_num_passed = (it->second.send_at_time == -1);
         // 定时触发: 距上次重传已超过 RTT, 再点一次名(防重传包也丢了, 两次间隔≥RTT)
         bool can_nack_timestamp_passed = (now - it->second.send_at_time) > rtt_ms_;
 
-        if ((consider_seq_num && can_nack_seq_num_passed) ||
-            (consider_timestamp && can_nack_timestamp_passed))
+        if (delay_timeout && ((consider_seq_num && can_nack_seq_num_passed) ||
+            (consider_timestamp && can_nack_timestamp_passed)))
         {
             // 触发nack的发送
             nack_batch.emplace_back(it->second.seq_num);
