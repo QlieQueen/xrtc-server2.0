@@ -2,6 +2,7 @@
 #define XRTCSERVER_MODULES_VIDEO_CODING_NACK_REQUESTER_H_
 
 #include <map>
+#include <set>
 #include <vector>
 
 #include <system_wrappers/include/clock.h>
@@ -24,7 +25,12 @@ public:
 
     // 返回某序号包的重传次数(times_nacked, 流入 Packet::times_nacked)
     // 旧包分支返回: 重传补到 → 该包被重传过几次; 纯乱序 → 0
-    int OnReceivedPacket(uint16_t seq_num);
+    // is_keyframe: 本包是否关键帧首包(其 seq 记入 keyframe_list_ 锚点)
+    int OnReceivedPacket(uint16_t seq_num, bool is_keyframe);
+
+private:
+    // nack_list_ 超限时清掉关键帧之前的缺失包(参考链已断, 重传无用), 腾空间
+    bool RemovePacketsUntilKeyFrame();
 
 public:
     sigslot::signal1<const std::vector<uint16_t>> SignalNackSend;
@@ -63,6 +69,8 @@ private:
     // 注意"新旧" = 发送端发出的先后, 与到达顺序无关(回绕后数值大小会反转, 见 v2_6.1.2 笔记)
     uint16_t newest_seq_num_ = 0;
     std::map<uint16_t, NackInfo, webrtc::DescendingSeqNumComp<uint16_t>> nack_list_;
+    // 关键帧首包 seq 锚点表: 超限清理时批量放弃"关键帧之前的缺失包"
+    std::set<uint16_t, webrtc::DescendingSeqNumComp<uint16_t>> keyframe_list_;
     // 重传间隔基准(两次重传之间至少等这么久); 默认 100ms, 可 UpdateRtt 喂实测值
     int64_t rtt_ms_;
 };

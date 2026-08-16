@@ -94,7 +94,9 @@ void RtpVideoStreamReceiver::OnReceivedPayloadData(
     video_header.is_last_packet_in_frame |= rtp_packet.Marker();
 
     if (nack_module_) {
-        nack_module_->OnReceivedPacket(rtp_packet.SequenceNumber());
+        bool is_keyframe = video_header.is_first_packet_in_frame &&
+            video_header.frame_type == webrtc::VideoFrameType::kVideoFrameKey;
+        nack_module_->OnReceivedPacket(rtp_packet.SequenceNumber(), is_keyframe);
     }
 
     // 进环形缓冲组帧; 结果(完整帧的包集合 / 缓冲被清)交给 OnInsertedPacket
