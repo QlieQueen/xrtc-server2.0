@@ -34,6 +34,11 @@ namespace xrtc {
 class PushStream;
 class PullStream;
 
+// uid -> pull_stream
+typedef std::unordered_map<uint64_t, PullStream*> UserStreamMap;
+// stream_name -> UserStreamMap*
+typedef std::unordered_map<std::string, UserStreamMap*> PullStreamMap;
+
 class RtcStreamManager : public RtcStreamListener {
 public:
     RtcStreamManager(EventLoop* el);
@@ -78,10 +83,15 @@ private:
     void RemovePullStream(RtcStream* stream);
     void RemovePullStream(uint64_t uid, const std::string& stream_name);
 
+    void AddPullStreamM(PullStream* stream);
+
 private:
     EventLoop* el_;
     std::unordered_map<std::string, PushStream*> push_streams_;
+    // transparent
     std::unordered_map<std::string, PullStream*> pull_streams_;
+    // live
+    PullStreamMap multi_pull_streams_;
     std::unique_ptr<PortAllocator> allocator_;
 };
 

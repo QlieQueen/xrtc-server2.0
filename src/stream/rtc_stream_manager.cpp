@@ -87,6 +87,26 @@ void RtcStreamManager::RemovePullStream(uint64_t uid, const std::string& stream_
     }
 }
 
+void RtcStreamManager::AddPullStreamM(PullStream* stream) {
+    if (!stream) {
+        return;
+    }
+
+    UserStreamMap* umap = nullptr;
+
+    PullStreamMap::iterator pit = multi_pull_streams_.find(stream->get_stream_name());
+    if (pit != multi_pull_streams_.end()) {
+        umap = pit->second;
+    } else { // 该流第一次被拉取
+        umap = new UserStreamMap();
+        multi_pull_streams_[stream->get_stream_name()] = umap;
+    }
+
+    if (umap) {
+        umap->insert(std::pair<uint64_t, PullStream*>(stream->get_uid(), stream));
+    }
+}
+
 int RtcStreamManager::CreatePushStream(uint64_t uid,
         const std::string& stream_name,
         bool audio,
@@ -159,7 +179,11 @@ int RtcStreamManager::CreatePullStream(uint64_t uid,
 
     offer = stream->CreateOffer();
 
-    pull_streams_[stream_name] = stream;
+    if (stream->IsTransparent()) {
+        pull_streams_[stream_name] = stream;
+    } else { // 直播模式
+        AddPullStreamM(stream);
+    }
     return 0;
 }
 
