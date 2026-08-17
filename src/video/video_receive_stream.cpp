@@ -8,6 +8,13 @@ VideoReceiveStream::VideoReceiveStream(const VideoReceiveStreamConfig& config) :
     rtp_receive_stat_(ReceiveStat::Create(config.clock)),
     rtp_video_stream_receiver_(config, rtp_receive_stat_.get())
 {
+    if (config.rtp.rtx_ssrc != 0) {
+        rtx_receive_stream_ = std::make_unique<RtxReceiveStream>(
+            &rtp_video_stream_receiver_,
+            config.rtp.remote_ssrc,
+            config.rtp.rtx_associated_payload_types,
+            rtp_receive_stat_.get());
+    }
 }
 
 
@@ -15,7 +22,11 @@ VideoReceiveStream::~VideoReceiveStream() {
 }
 
 void VideoReceiveStream::OnRtpPacket(const webrtc::RtpPacketReceived& packet) {
-    rtp_video_stream_receiver_.OnRtpPacket(packet);
+    if (packet.Ssrc() == config_.rtp.rtx_ssrc) {
+        rtx_receive_stream_->OnRtpPacket(packet);
+    } else {
+        rtp_video_stream_receiver_.OnRtpPacket(packet);
+    }
 }
 
 // 收到RTCP数据: 转给RtpVideoStreamReceiver, 最终喂给RTCP模块解析

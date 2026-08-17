@@ -3,6 +3,7 @@
 
 #include "video/video_receive_stream_config.h"
 #include "video/rtp_video_stream_receiver.h"
+#include "video/rtx_receive_stream.h"
 #include "modules/rtp_rtcp/receive_stat.h"
 
 namespace xrtc {
@@ -24,6 +25,7 @@ private:
     std::unique_ptr<ReceiveStat> rtp_receive_stat_;
     // 接收器成员, 内部持有指向上面统计模块的借用指针
     RtpVideoStreamReceiver rtp_video_stream_receiver_;
+    std::unique_ptr<RtxReceiveStream> rtx_receive_stream_;
 };
 
 } // namespace xrtc

@@ -542,6 +542,14 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
             config.rtp.local_ssrc = kDefaultVideoSsrc;
             // 远端视频主SSRC(从SDP的a=ssrc解析): RTCP接收解析SR时过滤用
             config.rtp.remote_ssrc = remote_video_ssrc_;
+            config.rtp.rtx_ssrc = remote_video_rtx_ssrc_;
+            for (auto codec : video_content->codecs()) {
+                auto it = codec->codec_param.find("apt");
+                if (it != codec->codec_param.end()) {
+                    config.rtp.rtx_associated_payload_types[codec->id] = std::stoi(it->second);
+                }
+            }
+
             config.rtp_rtcp_module_observer = this;
             video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
         }
