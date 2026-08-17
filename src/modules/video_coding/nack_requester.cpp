@@ -33,6 +33,11 @@ NackRequester::NackRequester(webrtc::Clock* clock, EventLoop* el) :
 }
 
 NackRequester::~NackRequester() {
+    // 析构时删除周期定时器, 避免回调悬垂(定时器仍挂在EventLoop上, data指向已释放的this)
+    if (nack_timer_) {
+        el_->DeleteTimer(nack_timer_);
+        nack_timer_ = nullptr;
+    }
 }
 
 void NackRequester::ProcessNacks() {
@@ -81,6 +86,9 @@ int NackRequester::OnReceivedPacket(uint16_t seq_num, bool is_keyframe,
         int nacks_send_for_packet = 0;
         if (nack_list_it != nack_list_.end()) {
             nacks_send_for_packet = nack_list_it->second.retries;
+            // 在档=重传补到: 证明对端收到了我们发出的 NACK 并重传
+            RTC_LOG(LS_WARNING) << "============retransmission received, seq: " << seq_num
+                << ", times_nacked: " << nacks_send_for_packet;
             nack_list_.erase(nack_list_it);
         }
 
