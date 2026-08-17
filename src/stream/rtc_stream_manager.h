@@ -39,15 +39,23 @@ public:
     RtcStreamManager(EventLoop* el);
     ~RtcStreamManager();
     
-    int CreatePushStream(uint64_t uid, const std::string& stream_name,
-            bool audio, bool video,
-            bool is_dtls, uint32_t log_id,
+    int CreatePushStream(uint64_t uid,
+            const std::string& stream_name,
+            bool audio,
+            bool video,
+            bool is_dtls,
+            const std::string& mode,
+            uint32_t log_id,
             rtc::RTCCertificate* certificate,
             std::string& offer);
 
-    int CreatePullStream(uint64_t uid, const std::string& stream_name,
-            bool audio, bool video,
-            bool is_dtls, uint32_t log_id,
+    int CreatePullStream(uint64_t uid,
+            const std::string& stream_name,
+            bool audio,
+            bool video,
+            bool is_dtls,
+            const std::string& mode,
+            uint32_t log_id,
             rtc::RTCCertificate* certificate,
             std::string& offer);
 

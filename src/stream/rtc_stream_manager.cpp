@@ -87,9 +87,13 @@ void RtcStreamManager::RemovePullStream(uint64_t uid, const std::string& stream_
     }
 }
 
-int RtcStreamManager::CreatePushStream(uint64_t uid, const std::string& stream_name,
-        bool audio, bool video,
-        bool is_dtls, uint32_t log_id,
+int RtcStreamManager::CreatePushStream(uint64_t uid,
+        const std::string& stream_name,
+        bool audio,
+        bool video,
+        bool is_dtls,
+        const std::string& mode,
+        uint32_t log_id,
         rtc::RTCCertificate* certificate,
         std::string& offer)
 {
@@ -102,6 +106,7 @@ int RtcStreamManager::CreatePushStream(uint64_t uid, const std::string& stream_n
     stream = new PushStream(el_, allocator_.get(), uid, stream_name,
             audio, video, log_id);
     stream->RegisterListener(this);
+    stream->set_mode(mode);
 
     if (is_dtls) {
         stream->Start(certificate);
@@ -115,9 +120,13 @@ int RtcStreamManager::CreatePushStream(uint64_t uid, const std::string& stream_n
     return 0;
 }
 
-int RtcStreamManager::CreatePullStream(uint64_t uid, const std::string& stream_name,
-        bool audio, bool video,
-        bool is_dtls, uint32_t log_id,
+int RtcStreamManager::CreatePullStream(uint64_t uid,
+        const std::string& stream_name,
+        bool audio,
+        bool video,
+        bool is_dtls,
+        const std::string& mode,
+        uint32_t log_id,
         rtc::RTCCertificate* certificate,
         std::string& offer)
 {
@@ -138,6 +147,7 @@ int RtcStreamManager::CreatePullStream(uint64_t uid, const std::string& stream_n
     PullStream* stream = new PullStream(el_, allocator_.get(), uid, stream_name,
             audio, video, log_id);
     stream->RegisterListener(this);
+    stream->set_mode(mode);
     stream->AddAudioSource(audio_source);
     stream->AddVideoSource(video_source);
 
@@ -223,9 +233,13 @@ void RtcStreamManager::OnRtpPacketReceived(RtcStream* stream,
         const char* data, size_t len) 
 {
     if (RtcStreamType::k_push == stream->stream_type()) {
-        PullStream* pull_stream = FindPullStream(stream->get_stream_name());
-        if (pull_stream) {
-            pull_stream->SendRtp(data, len);
+        if (stream->IsTransparent()) {
+            PullStream* pull_stream = FindPullStream(stream->get_stream_name());
+            if (pull_stream) {
+                pull_stream->SendRtp(data, len);
+            }
+        } else { // 直播模式
+
         }
     }
 }
@@ -233,16 +247,20 @@ void RtcStreamManager::OnRtpPacketReceived(RtcStream* stream,
 void RtcStreamManager::OnRtcpPacketReceived(RtcStream* stream, 
         const char* data, size_t len)
 {
-    if (RtcStreamType::k_push == stream->stream_type()) {
-        PullStream* pull_stream = FindPullStream(stream->get_stream_name());
-        if (pull_stream) {
-            pull_stream->SendRtcp(data, len);
+    if (stream->IsTransparent()) {
+        if (RtcStreamType::k_push == stream->stream_type()) {
+            PullStream* pull_stream = FindPullStream(stream->get_stream_name());
+            if (pull_stream) {
+                pull_stream->SendRtcp(data, len);
+            }
+        } else if (RtcStreamType::k_pull == stream->stream_type()) {
+            PushStream* push_stream = FindPushStream(stream->get_stream_name());
+            if (push_stream) {
+                push_stream->SendRtcp(data, len);
+            }
         }
-    } else if (RtcStreamType::k_pull == stream->stream_type()) {
-        PushStream* push_stream = FindPushStream(stream->get_stream_name());
-        if (push_stream) {
-            push_stream->SendRtcp(data, len);
-        }
+    } else { // 直播模式
+
     }
 }
 

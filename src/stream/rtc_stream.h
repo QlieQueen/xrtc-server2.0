@@ -61,7 +61,11 @@ public:
     
     uint64_t get_uid() { return uid; }
     const std::string& get_stream_name() { return stream_name; }
-    
+   
+    void set_mode(const std::string& mode) { pc->set_mode(mode); }
+    bool IsTransparent() const { return pc->IsTransparent(); }
+    bool IsLive() const { return pc->IsLive(); }
+
     int SendRtp(const char* data, size_t len);
     int SendRtcp(const char* data, size_t len);
 

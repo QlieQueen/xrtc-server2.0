@@ -451,6 +451,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
     int audio;
     int video;
     int is_dtls;
+    std::string mode;
 
     try {
         uid = root["uid"].asUInt64();
@@ -458,6 +459,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
         audio = root["audio"].asInt();
         video = root["video"].asInt();
         is_dtls = root.isMember("is_dtls") ? root["is_dtls"].asInt() : 1;
+        mode = root["mode"].asString();
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
@@ -469,6 +471,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
         << "] auido[" << audio
         << "] video[" << video
         << "] is_dtls[" << is_dtls
+        << "] mode[" << mode
         << "] signaling server push request";
 
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
@@ -478,6 +481,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
     msg->audio = audio;
     msg->video = video;
     msg->is_dtls = is_dtls;
+    msg->mode = mode;
     msg->log_id = log_id;
     msg->worker = this;
     msg->conn = c;
@@ -494,6 +498,7 @@ int SignalingWorker::ProcessPull(int cmdno, TcpConnection* c,
     int audio;
     int video;
     int is_dtls;
+    std::string mode;
 
     try {
         uid = root["uid"].asUInt64();
@@ -501,6 +506,7 @@ int SignalingWorker::ProcessPull(int cmdno, TcpConnection* c,
         audio = root["audio"].asInt();
         video = root["video"].asInt();
         is_dtls = root.isMember("is_dtls") ? root["is_dtls"].asInt() : 1;
+        mode = root["mode"].asString();
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
@@ -512,6 +518,7 @@ int SignalingWorker::ProcessPull(int cmdno, TcpConnection* c,
         << "] auido[" << audio
         << "] video[" << video
         << "] is_dtls[" << is_dtls
+        << "] mode[" << mode
         << "] signaling server pull request";
 
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
@@ -521,6 +528,7 @@ int SignalingWorker::ProcessPull(int cmdno, TcpConnection* c,
     msg->audio = audio;
     msg->video = video;
     msg->is_dtls = is_dtls;
+    msg->mode = mode;
     msg->log_id = log_id;
     msg->worker = this;
     msg->conn = c;

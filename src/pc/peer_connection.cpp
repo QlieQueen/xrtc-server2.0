@@ -77,6 +77,14 @@ PeerConnection::~PeerConnection() {
     RTC_LOG(LS_INFO) << "PeerConnection destroy";
 }
 
+void PeerConnection::set_mode(const std::string& mode) {
+    if ("transparent" == mode) {
+        transport_mode_ = TransportMode::kTransparent;
+    } else {
+        transport_mode_ = TransportMode::kLive;
+    }
+}
+
 void PeerConnection::OnCandidateAllocateDone(TransportController* /*transport_controller*/,
         const std::string& transport_name,
         IceCandidateComponent /*component*/,
@@ -114,42 +122,46 @@ webrtc::MediaType PeerConnection::GetMediaType(uint32_t ssrc) const {
 void PeerConnection::OnRtpPacketReceived(TransportController*,
         rtc::CopyOnWriteBuffer* packet, int64_t ts)
 {
-    // 1.把RTP数据塞进RtpPacketReceived 对象，解析出 SSRC/序列号/时间戳等字段
-    webrtc::RtpPacketReceived parsed_packet;
-    if (!parsed_packet.Parse(std::move(*packet))) {   // move：字节所有权转移给对象
-        RTC_LOG(LS_WARNING) << "invalid rtp packet";
-        return;
-    }
-
-    // 2.记录 包的到达时间 -- 将来算 jitter 的时间基准
-    if (ts > 0) {
-        parsed_packet.set_arrival_time(webrtc::Timestamp::Micros(ts));
-    } else {
-        parsed_packet.set_arrival_time(clock_->CurrentTime());
-    }
-
-    // 3. 用 SSRC 判断是：视频/音频/RTX
-    webrtc::MediaType packet_type = GetMediaType(parsed_packet.Ssrc());
-    if (packet_type == webrtc::MediaType::VIDEO) {
-        parsed_packet.set_payload_type_frequency(webrtc::kVideoPayloadTypeFrequency);
-        if (video_receive_stream_) {
-            video_receive_stream_->OnRtpPacket(parsed_packet);
+    if (IsLive()) {
+        // 1.把RTP数据塞进RtpPacketReceived 对象，解析出 SSRC/序列号/时间戳等字段
+        webrtc::RtpPacketReceived parsed_packet;
+        if (!parsed_packet.Parse(std::move(*packet))) {   // move：字节所有权转移给对象
+            RTC_LOG(LS_WARNING) << "invalid rtp packet";
+            return;
         }
-    }
 
-    //SignalRtpPacketReceived(this, packet, ts);
+        // 2.记录 包的到达时间 -- 将来算 jitter 的时间基准
+        if (ts > 0) {
+            parsed_packet.set_arrival_time(webrtc::Timestamp::Micros(ts));
+        } else {
+            parsed_packet.set_arrival_time(clock_->CurrentTime());
+        }
+
+        // 3. 用 SSRC 判断是：视频/音频/RTX
+        webrtc::MediaType packet_type = GetMediaType(parsed_packet.Ssrc());
+        if (packet_type == webrtc::MediaType::VIDEO) {
+            parsed_packet.set_payload_type_frequency(webrtc::kVideoPayloadTypeFrequency);
+            if (video_receive_stream_) {
+                video_receive_stream_->OnRtpPacket(parsed_packet);
+            }
+        }
+    } else {
+        SignalRtpPacketReceived(this, packet, ts);
+    }
 }
 
 void PeerConnection::OnRtcpPacketReceived(TransportController*,
         rtc::CopyOnWriteBuffer* packet, int64_t ts)
 {
-    // 收到的RTCP包直接投递给视频接收流, 由RTCPReceiver解析(4.13起走这条链路);
-    // 原SignalRtcpPacketReceived信号链路暂保留
-    if (video_receive_stream_) {
-        video_receive_stream_->DeliverRtcp(packet->data(), packet->size());
+    if (IsLive()) {
+        // 收到的RTCP包直接投递给视频接收流, 由RTCPReceiver解析(4.13起走这条链路);
+        // 原SignalRtcpPacketReceived信号链路暂保留
+        if (video_receive_stream_) {
+            video_receive_stream_->DeliverRtcp(packet->data(), packet->size());
+        }
+    } else {
+        SignalRtcpPacketReceived(this, packet, ts);
     }
-
-    //SignalRtcpPacketReceived(this, packet, ts);
 }
 
 int PeerConnection::Init(rtc::RTCCertificate* certificate) {
@@ -520,7 +532,9 @@ int PeerConnection::SetRemoteSdp(const std::string& sdp) {
     remote_desc_->AddTransportInfo(audio_td);
     remote_desc_->AddTransportInfo(video_td);
 
-    CreateVideoReceiveStream(video_content.get());
+    if (IsLive()) {
+        CreateVideoReceiveStream(video_content.get());
+    }
    
     transport_controller_->SetRemoteDescription(remote_desc_.get());
     return 0;

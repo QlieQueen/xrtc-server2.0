@@ -48,6 +48,10 @@ class PeerConnection : public sigslot::has_slots<>,
                        public RtpRtcpModuleObserver 
 {
 public:
+    enum class TransportMode {
+        kTransparent,
+        kLive
+    };
     PeerConnection(EventLoop* el, PortAllocator* allocator);
     
     int Init(rtc::RTCCertificate* certificate);
@@ -66,6 +70,10 @@ public:
         video_source_ = source;
     }
     
+    void set_mode(const std::string& mode);
+    bool IsTransparent() const { return transport_mode_ == TransportMode::kTransparent; }
+    bool IsLive() const { return transport_mode_ == TransportMode::kLive; }
+
     int SendRtp(const char* data, size_t len);
     int SendRtcp(const char* data, size_t len);
 
@@ -101,10 +109,11 @@ private:
 private:
     EventLoop* el_;
     webrtc::Clock* clock_;
+    bool is_dtls_ = true;
+    TransportMode transport_mode_ = TransportMode::kLive;
     std::unique_ptr<SessionDescription> local_desc_;
     std::unique_ptr<SessionDescription> remote_desc_;
     rtc::RTCCertificate* certificate_ = nullptr;
-    bool is_dtls_ = true;
     std::unique_ptr<TransportController> transport_controller_;
     TimerWatcher* destroy_timer_ = nullptr;
     std::vector<StreamParams> audio_source_;
