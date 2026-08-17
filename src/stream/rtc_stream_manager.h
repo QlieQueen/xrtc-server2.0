@@ -84,6 +84,8 @@ private:
     void RemovePullStream(uint64_t uid, const std::string& stream_name);
 
     void AddPullStreamM(PullStream* stream);
+    void RemovePullStreamM(RtcStream* stream);
+    void RemovePullStreamM(uint64_t uid, const std::string& stream_name);
 
 private:
     EventLoop* el_;

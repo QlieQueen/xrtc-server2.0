@@ -107,6 +107,40 @@ void RtcStreamManager::AddPullStreamM(PullStream* stream) {
     }
 }
 
+void RtcStreamManager::RemovePullStreamM(RtcStream* stream) {
+    if (!stream) {
+        return;
+    }
+
+    RemovePullStreamM(stream->get_uid(), stream->get_stream_name());
+}
+
+void RtcStreamManager::RemovePullStreamM(uint64_t uid, const std::string& stream_name) {
+    // 外层:stream_name -> UserStreamMap(uid -> PullStream*)
+    PullStreamMap::iterator pit = multi_pull_streams_.find(stream_name);
+    if (pit == multi_pull_streams_.end()) {
+        return;
+    }
+
+    UserStreamMap* umap = pit->second;
+    // 内层:按 uid 定位该拉流端
+    UserStreamMap::iterator uit = umap->find(uid);
+    if (uit == umap->end()) {
+        return;
+    }
+
+    // 用迭代器删除(已定位,免二次哈希);注意删后 uit 即失效,后面不再使用
+    PullStream* pull_stream = uit->second;
+    umap->erase(uit);
+    delete pull_stream;
+
+    // 该流已无任何拉流端时,清理外层槽位,防止泄漏空 UserStreamMap
+    if (umap->empty()) {
+        multi_pull_streams_.erase(pit);
+        delete umap;
+    }
+}
+
 int RtcStreamManager::CreatePushStream(uint64_t uid,
         const std::string& stream_name,
         bool audio,
@@ -157,7 +191,11 @@ int RtcStreamManager::CreatePullStream(uint64_t uid,
         return -1;
     }
     
-    RemovePullStream(uid, stream_name);
+    if ("transparent" == mode) {
+        RemovePullStream(uid, stream_name);
+    } else { // 直播模式
+        RemovePullStreamM(uid, stream_name);
+    }
     
     std::vector<StreamParams> audio_source;
     std::vector<StreamParams> video_source;
@@ -248,7 +286,11 @@ void RtcStreamManager::OnConnectionState(RtcStream* stream,
         if (stream->stream_type() == RtcStreamType::k_push) {
             RemovePushStream(stream);
         } else if (stream->stream_type() == RtcStreamType::k_pull) {
-            RemovePullStream(stream);
+            if (stream->IsTransparent()) {
+                RemovePullStream(stream);
+            } else {
+                RemovePullStreamM(stream);
+            }
         }
     } 
 }
@@ -292,7 +334,11 @@ void RtcStreamManager::OnStreamException(RtcStream* stream) {
     if (RtcStreamType::k_push == stream->stream_type()) {
         RemovePushStream(stream);
     } else if (RtcStreamType::k_pull == stream->stream_type()) {
-        RemovePullStream(stream);
+        if (stream->IsTransparent()) {
+            RemovePullStream(stream);
+        } else {
+            RemovePullStreamM(stream);
+        }
     }
 }
 
