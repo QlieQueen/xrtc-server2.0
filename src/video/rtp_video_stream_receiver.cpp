@@ -143,13 +143,12 @@ void RtpVideoStreamReceiver::OnAssembledFrame(std::unique_ptr<RtpFrameObject> fr
 }
 
 void RtpVideoStreamReceiver::OnNackSend(const std::vector<uint16_t>& nack_list) {
-    /*
     std::stringstream ss;
     for (auto seq_num : nack_list) {
         ss << seq_num << ", ";
     }
     RTC_LOG(LS_WARNING) << "============nack list: " << ss.str();
-    */
+
    rtp_rtcp_->SendNack(nack_list);
 }
 
