@@ -97,8 +97,10 @@ void RtpVideoStreamReceiver::OnReceivedPayloadData(
     if (nack_module_) {
         bool is_keyframe = video_header.is_first_packet_in_frame &&
             video_header.frame_type == webrtc::VideoFrameType::kVideoFrameKey;
-        // 当前无重传通道(RTX 6.6 接入), 旧包均为真乱序, 直方图统计真实工作
-        nack_module_->OnReceivedPacket(rtp_packet.SequenceNumber(), is_keyframe, false);
+        // is_retransmitted 传 recovered(): 恢复包(重传补上的)不进乱序直方图,
+        // 只有真乱序包才统计 —— 避免恢复包污染 NACK 等待线
+        nack_module_->OnReceivedPacket(rtp_packet.SequenceNumber(), is_keyframe,
+                rtp_packet.recovered());
     }
 
     // 进环形缓冲组帧; 结果(完整帧的包集合 / 缓冲被清)交给 OnInsertedPacket
