@@ -128,3 +128,21 @@ signaling --XRPC--> SignalingWorker::ProcessPush
   → 客户端 createAnswer → /signaling/sendanswer → CMDNO_ANSWER
   → RtcWorker::ProcessAnswer → SetAnswer → SetRemoteSdp → ICE 连通 → RTP 流
 ```
+
+## 待办:下行 QoS(1V多 增强,可选)
+
+**现状(2026-08-17 核实,与参考实现 xrtc2.0-9.9 最终版 9.9 对照)**:上行 QoS 已完整(6.x:NackRequester/BuildNack/RtxReceiveStream),**下行无 QoS**:
+
+- 本工程尚未开始 7.x,仍是一推一拉透传(`pull_streams_` 单值 map,RTCP 双向透传)
+- 参考 9.9 的 1V多(live 模式):一推多拉广播已实现(`multi_pull_streams_`,下行 SSRC/seq 原样透传),但下行 RTCP **整体截断丢弃**——`RtcStreamManager::OnRtcpPacketReceived` 的 live 分支是空实现,拉流端 NACK/PLI/RR 既不透传也不处理;无下行 RTP Cache、无 `HandleNack`(rtcp_receiver 只有 HandleSr/HandleRr)、无 PLI 转发
+
+**后果**:拉流端下行丢包完全无法恢复(NACK 和 PLI 都被丢弃),只能等推流端自然出关键帧(场景切换/周期 IDR),弱网下长时间花屏。1V1 transparent 模式不受影响(透传闭环)。
+
+**可选完善方案(按设计文档第 30 节优先级)**:
+
+1. 下行 RTP Cache:按 (SSRC, seq) 缓存滑动窗口 RTP 包——下行透传 SSRC/seq,所以**不需要** sequence-space mapping,Cache key 零映射成本
+2. `HandleNack`:解析拉流端 NACK → 查 Cache → HIT 用该拉流端自己的 SRTP session 单播重发(只给请求者);MISS 合并后向上游推流端请求
+3. PLI 合并节流后转发推流端(广播式恢复,多路合并一次转发)
+4. RTP space mapping 是最后考虑项(做单 PC 多流会议 / Simulcast / 下行重写 SSRC 时才需要)
+
+**参考文档**:`note/1N_SFU_NACK_RTX_RTP_Cache_详细设计总结.md`、`note/1V1推导到1V多-SFU截断与SSRC冲突分析.md`
