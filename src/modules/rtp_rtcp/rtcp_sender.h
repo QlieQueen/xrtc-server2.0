@@ -37,6 +37,7 @@ public:
     void SetRtcpStatus(webrtc::RtcpMode method);
     // 设置是否为发送端(true生成SR, false生成RR)
     void SetSendingStatus(bool sending) { sending_ = sending; }
+    void SetRemoteSsrc(uint32_t ssrc) { remote_ssrc_ = ssrc; }
 
     uint32_t cur_report_interval_ms() const { return cur_report_interval_ms_; }
 
@@ -66,11 +67,13 @@ private:
 
     // 构建RR(接收端统计报告)报文, 把打包结果追加到复合包
     void BuildRR(const RtcpContext& ctx, PacketSender& sender);
+    void BuildNack(const RtcpContext& ctx, PacketSender& sender);
 
 private:
     webrtc::Clock* clock_;
     bool audio_;
     uint32_t ssrc_;
+    uint32_t remote_ssrc_ = 0;
     ReceiveStat* receive_stat_; // 接收统计(config 传入, 非拥有; 生命周期归 VideoReceiveStream)
     // 当前RTCP发送模式, 默认关闭
     webrtc::RtcpMode method_ = webrtc::RtcpMode::kOff;

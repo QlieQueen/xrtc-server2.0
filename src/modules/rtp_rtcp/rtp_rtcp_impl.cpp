@@ -77,6 +77,7 @@ void RtpRtcpImpl::IncomingRtcpPacket(const uint8_t* data, size_t len) {
 
 // 设置远端媒体流SSRC: RTCPReceiver 过滤SR包时用
 void RtpRtcpImpl::SetRemoteSsrc(uint32_t ssrc) {
+    rtcp_sender_.SetRemoteSsrc(ssrc);
     rtcp_receiver_.SetRemoteSsrc(ssrc);
 }
 

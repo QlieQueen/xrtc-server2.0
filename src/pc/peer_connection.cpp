@@ -19,7 +19,9 @@
 
 #include <absl/algorithm/container.h>
 #include <rtc_base/logging.h>
+#include <sstream>
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/nack.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 
 #include "ice/ice_credentials.h"
@@ -609,6 +611,18 @@ static void DebugCompoundRtcpPacket(const uint8_t* data, size_t len) {
                     }
                 }
             } break;
+            case webrtc::rtcp::Rtpfb::kPacketType:
+            {
+                // 本端发出的 RTPFB(PT=205): 当前只有 NACK(FMT=1), 打印 PID/BLP 展开后的序号
+                webrtc::rtcp::Nack nack;
+                if (nack.Parse(rtcp_block)) {
+                    std::stringstream ss;
+                    for (auto seq_num : nack.packet_ids()) {
+                        ss << seq_num << ", ";
+                    }
+                    RTC_LOG(LS_WARNING) << "=======nack packet ids: " << ss.str();
+                }
+            } break;
             default:
                 RTC_LOG(LS_WARNING) << "unknown rtcp packet_type: " << rtcp_block.type();
                 break;
@@ -621,6 +635,7 @@ void PeerConnection::OnLocalRtcpPacket(webrtc::MediaType media_type,
 {
     RTC_LOG(LS_WARNING) << "============on local rtcp packet, len: " << len;
     DebugCompoundRtcpPacket(data, len);
+
     // 将本地打包好的rtcp包，发送给对方
     SendRtcp((const char*)data, len);
 }
