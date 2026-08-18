@@ -185,7 +185,7 @@ void RtcWorker::ProcessPull(std::shared_ptr<RtcMsg> msg) {
 
 void RtcWorker::ProcessAnswer(std::shared_ptr<RtcMsg> msg) {
     int ret = rtc_stream_mgr_->SetAnswer(msg->uid, msg->stream_name,
-            msg->sdp, msg->stream_type, msg->log_id);
+            msg->sdp, msg->stream_type, msg->mode, msg->log_id);
      
     if (ret != 0) {
         msg->err_no = -1;
@@ -193,6 +193,7 @@ void RtcWorker::ProcessAnswer(std::shared_ptr<RtcMsg> msg) {
 
     RTC_LOG(LS_INFO) << "rtc worker process answer, uid: " << msg->uid
         << ", stream_name: " << msg->stream_name
+        << ", mode: " << msg->mode
         << ", worker_id: " << worker_id_
         << ", log_id: " << msg->log_id
         << ", ret: " << ret;
@@ -225,7 +226,7 @@ void RtcWorker::ProcessStopPush(std::shared_ptr<RtcMsg> msg) {
 }
 
 void RtcWorker::ProcessStopPull(std::shared_ptr<RtcMsg> msg) {
-    int ret = rtc_stream_mgr_->StopPull(msg->uid, msg->stream_name);
+    int ret = rtc_stream_mgr_->StopPull(msg->uid, msg->stream_name, msg->mode);
 
     if (ret != 0) {
         msg->err_no = -1;
@@ -233,6 +234,7 @@ void RtcWorker::ProcessStopPull(std::shared_ptr<RtcMsg> msg) {
 
     RTC_LOG(LS_INFO) << "rtc worker process stop pull, uid: " << msg->uid
         << ", stream_name: " << msg->stream_name
+        << ", mode: " << msg->mode
         << ", worker_id: " << worker_id_
         << ", log_id: " << msg->log_id
         << ", ret: " << ret;

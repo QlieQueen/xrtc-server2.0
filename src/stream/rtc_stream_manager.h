@@ -66,9 +66,9 @@ public:
 
     int SetAnswer(uint64_t uid, const std::string& stream_name,
             const std::string& answer, const std::string& stream_type, 
-            uint32_t log_id);
+            const std::string& mode, uint32_t log_id);
     int StopPush(uint64_t uid, const std::string& stream_name);
-    int StopPull(uint64_t uid, const std::string& stream_name);
+    int StopPull(uint64_t uid, const std::string& stream_name, const std::string& mode);
  
     void OnConnectionState(RtcStream* stream, PeerConnectionState state) override;
     void OnRtpPacketReceived(RtcStream* stream, const char* data, size_t len) override;
@@ -86,6 +86,7 @@ private:
     void AddPullStreamM(PullStream* stream);
     void RemovePullStreamM(RtcStream* stream);
     void RemovePullStreamM(uint64_t uid, const std::string& stream_name);
+    PullStream* FindPullStreamM(uint64_t uid, const std::string& stream_name);
 
 private:
     EventLoop* el_;

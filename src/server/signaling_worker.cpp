@@ -542,10 +542,12 @@ int SignalingWorker::ProcessStopPush(int cmdno, TcpConnection* c,
 {
     uint64_t uid;
     std::string stream_name;
+    std::string mode;
 
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
+        mode = root["mode"].asString();
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
@@ -554,12 +556,14 @@ int SignalingWorker::ProcessStopPush(int cmdno, TcpConnection* c,
 
     RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
         << "] stream_name[" << stream_name
+        << "] mode[" << mode
         << "] signaling server send stop push request";
 
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
     msg->cmdno = cmdno;
     msg->uid = uid;
     msg->stream_name = stream_name;
+    msg->mode = mode;
     msg->log_id = log_id;
     msg->worker = this;
     msg->conn = c;
@@ -573,10 +577,12 @@ int SignalingWorker::ProcessStopPull(int cmdno, TcpConnection* c,
 {
     uint64_t uid;
     std::string stream_name;
+    std::string mode;
 
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
+        mode = root["mode"].asString();
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
@@ -585,12 +591,14 @@ int SignalingWorker::ProcessStopPull(int cmdno, TcpConnection* c,
 
     RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
         << "] stream_name[" << stream_name
+        << "] mode[" << mode
         << "] signaling server send stop pull request";
 
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
     msg->cmdno = cmdno;
     msg->uid = uid;
     msg->stream_name = stream_name;
+    msg->mode = mode;
     msg->log_id = log_id;
     msg->worker = this;
     msg->conn = c;
@@ -606,12 +614,14 @@ int SignalingWorker::ProcessAnswer(int cmdno, TcpConnection* c,
     std::string stream_name;
     std::string answer;
     std::string stream_type;
+    std::string mode;
 
     try {
         uid = root["uid"].asUInt64();
         stream_name = root["stream_name"].asString();
         answer = root["answer"].asString();
         stream_type = root["type"].asString();
+        mode = root["mode"].asString();
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
@@ -620,6 +630,7 @@ int SignalingWorker::ProcessAnswer(int cmdno, TcpConnection* c,
 
     RTC_LOG(LS_INFO) << "cmdno[" << cmdno << "] uid[" << uid
         << "] stream_name[" << stream_name
+        << "] mode[" << mode
         << "] answer[" << answer
         << "] stream_type[" << stream_type << "] signaling server send answer request";
 
@@ -627,6 +638,7 @@ int SignalingWorker::ProcessAnswer(int cmdno, TcpConnection* c,
     msg->cmdno = cmdno;
     msg->uid = uid;
     msg->stream_name = stream_name;
+    msg->mode = mode;
     msg->sdp = answer;
     msg->stream_type = stream_type;
     msg->log_id = log_id;

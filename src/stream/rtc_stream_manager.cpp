@@ -35,6 +35,17 @@ RtcStreamManager::RtcStreamManager(EventLoop* el) :
 }
 
 RtcStreamManager::~RtcStreamManager() {
+    PullStreamMap::iterator pit = multi_pull_streams_.begin();
+    while (pit != multi_pull_streams_.end()) {
+        if (pit->second) {
+            pit->second->clear();
+            delete pit->second;
+            pit->second = nullptr;
+        }
+        pit++;
+    }
+
+    multi_pull_streams_.clear();
 }
 
 PushStream* RtcStreamManager::FindPushStream(const std::string& stream_name) {
@@ -123,22 +134,45 @@ void RtcStreamManager::RemovePullStreamM(uint64_t uid, const std::string& stream
     }
 
     UserStreamMap* umap = pit->second;
-    // 内层:按 uid 定位该拉流端
-    UserStreamMap::iterator uit = umap->find(uid);
-    if (uit == umap->end()) {
+    if (!umap) {
         return;
     }
 
-    // 用迭代器删除(已定位,免二次哈希);注意删后 uit 即失效,后面不再使用
-    PullStream* pull_stream = uit->second;
-    umap->erase(uit);
-    delete pull_stream;
+    // 内层:按 uid 定位该拉流端
+    UserStreamMap::iterator uit = umap->find(uid);
+    if (uit != umap->end()) {
+        // 用迭代器删除(已定位,免二次哈希);注意删后 uit 即失效,后面不再使用
+        PullStream* pull_stream = uit->second;
+        umap->erase(uit);
+        delete pull_stream;
+    }
 
     // 该流已无任何拉流端时,清理外层槽位,防止泄漏空 UserStreamMap
     if (umap->empty()) {
         multi_pull_streams_.erase(pit);
         delete umap;
     }
+}
+
+PullStream* RtcStreamManager::FindPullStreamM(uint64_t uid, const std::string& stream_name) {
+    // 外层:stream_name -> UserStreamMap(uid -> PullStream*)
+    PullStreamMap::iterator pit = multi_pull_streams_.find(stream_name);
+    if (pit == multi_pull_streams_.end()) {
+        return nullptr;
+    }
+
+    UserStreamMap* umap = pit->second;
+    if (!umap) {
+        return nullptr;
+    }
+
+    // 内层:按 uid 定位该拉流端
+    UserStreamMap::iterator uit = umap->find(uid);
+    if (uit != umap->end()) {
+        return uit->second;
+    }
+
+    return nullptr;
 }
 
 int RtcStreamManager::CreatePushStream(uint64_t uid,
@@ -227,7 +261,7 @@ int RtcStreamManager::CreatePullStream(uint64_t uid,
 
 int RtcStreamManager::SetAnswer(uint64_t uid, const std::string& stream_name,
         const std::string& answer, const std::string& stream_type, 
-        uint32_t log_id)
+        const std::string& mode, uint32_t log_id)
 {
     if ("push" == stream_type) {
         PushStream* push_stream = FindPushStream(stream_name);
@@ -248,7 +282,13 @@ int RtcStreamManager::SetAnswer(uint64_t uid, const std::string& stream_name,
         push_stream->SetRemoteSdp(answer);
 
     } else if ("pull" == stream_type) {
-        PullStream* pull_stream = FindPullStream(stream_name);
+        PullStream* pull_stream = nullptr;
+        if ("transparent" == mode) {
+            pull_stream = FindPullStream(stream_name);
+        } else {
+            pull_stream = FindPullStreamM(uid, stream_name);
+        }
+
         if (!pull_stream) {
             RTC_LOG(LS_WARNING) << "pull stream not found, uid: " << uid
                 << ", stream_name: " << stream_name
@@ -274,8 +314,15 @@ int RtcStreamManager::StopPush(uint64_t uid, const std::string& stream_name) {
     return 0;
 }
 
-int RtcStreamManager::StopPull(uint64_t uid, const std::string& stream_name) {
-    RemovePullStream(uid, stream_name);
+int RtcStreamManager::StopPull(uint64_t uid,
+        const std::string& stream_name,
+        const std::string& mode)
+{
+    if (mode == "transparent") {
+        RemovePullStream(uid, stream_name);
+    } else {
+        RemovePullStreamM(uid, stream_name);
+    }
     return 0;
 }
 
