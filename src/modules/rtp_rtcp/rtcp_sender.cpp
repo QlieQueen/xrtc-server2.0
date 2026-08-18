@@ -3,6 +3,7 @@
 #include <rtc_base/logging.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/nack.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/pli.h>
 #include <modules/rtp_rtcp/source/rtp_rtcp_config.h>
 #include <modules/rtp_rtcp/source/time_util.h>
 
@@ -81,6 +82,7 @@ RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
     // SR(发送端报告)等其他类型的构建函数在后续课程注册
     builders_[webrtc::kRtcpRr] = &RTCPSender::BuildRR;
     builders_[webrtc::kRtcpNack] = &RTCPSender::BuildNack;
+    builders_[webrtc::kRtcpPli] = &RTCPSender::BuildPli;
 }
 
 RTCPSender::~RTCPSender() {
@@ -272,6 +274,13 @@ void RTCPSender::BuildNack(const RtcpContext& ctx, PacketSender& sender) {
     nack.SetMediaSsrc(remote_ssrc_);
     nack.SetPacketIds(ctx.nack_list_, ctx.nack_size_);
     sender.AppendPacket(nack);
+}
+
+void RTCPSender::BuildPli(const RtcpContext& ctx, PacketSender& sender) {
+    webrtc::rtcp::Pli pli;    
+    pli.SetSenderSsrc(ssrc_);
+    pli.SetMediaSsrc(remote_ssrc_);
+    sender.AppendPacket(pli);
 }
 
 }

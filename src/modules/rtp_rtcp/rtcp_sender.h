@@ -68,6 +68,7 @@ private:
     // 构建RR(接收端统计报告)报文, 把打包结果追加到复合包
     void BuildRR(const RtcpContext& ctx, PacketSender& sender);
     void BuildNack(const RtcpContext& ctx, PacketSender& sender);
+    void BuildPli(const RtcpContext& ctx, PacketSender& sender);
 
 private:
     webrtc::Clock* clock_;

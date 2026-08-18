@@ -65,7 +65,7 @@ void RtpRtcpImpl::SendNack(const std::vector<uint16_t>& nack_list) {
 }
 
 void RtpRtcpImpl::SendRTCP(webrtc::RTCPPacketType packet_type) {
-    RTC_LOG(LS_WARNING) << "==============is_pli";
+    rtcp_sender_.SendRTCP(GetFeedbackState(), packet_type);
 }
 
 // 设置RTCP开关: 开启时创建周期定时器(按conf配置间隔触发上报), 关闭时删除
