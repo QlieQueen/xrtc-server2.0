@@ -71,8 +71,12 @@ public:
     int StopPull(uint64_t uid, const std::string& stream_name, const std::string& mode);
  
     void OnConnectionState(RtcStream* stream, PeerConnectionState state) override;
+    // transparent
     void OnRtpPacketReceived(RtcStream* stream, const char* data, size_t len) override;
     void OnRtcpPacketReceived(RtcStream* stream, const char* data, size_t len) override;
+    // live
+    void OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
+            const webrtc::RtpPacketReceived& packetr) override;
     void OnStreamException(RtcStream* stream) override;
 
 private:

@@ -342,6 +342,14 @@ void RtcStreamManager::OnConnectionState(RtcStream* stream,
     } 
 }
 
+// live
+void RtcStreamManager::OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
+        const webrtc::RtpPacketReceived& packet)
+{
+    RTC_LOG(LS_WARNING) << "==============seq: " << packet.SequenceNumber();
+}
+
+// transparent
 void RtcStreamManager::OnRtpPacketReceived(RtcStream* stream, 
         const char* data, size_t len) 
 {
@@ -351,8 +359,6 @@ void RtcStreamManager::OnRtpPacketReceived(RtcStream* stream,
             if (pull_stream) {
                 pull_stream->SendRtp(data, len);
             }
-        } else { // 直播模式
-
         }
     }
 }

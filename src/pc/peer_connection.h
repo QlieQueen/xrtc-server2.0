@@ -79,10 +79,16 @@ public:
 
     sigslot::signal2<PeerConnection*, PeerConnectionState>
         SignalConnectionState;
+
+    // transport
     sigslot::signal3<PeerConnection*, rtc::CopyOnWriteBuffer*, int64_t>
         SignalRtpPacketReceived;
     sigslot::signal3<PeerConnection*, rtc::CopyOnWriteBuffer*, int64_t>
         SignalRtcpPacketReceived;
+
+    // live
+    sigslot::signal3<PeerConnection*, webrtc::MediaType, const webrtc::RtpPacketReceived&>
+        SignalRtpPacket;
 
 private:
     ~PeerConnection();
@@ -96,7 +102,8 @@ private:
             rtc::CopyOnWriteBuffer* packet, int64_t ts);
     void OnRtcpPacketReceived(TransportController*,
             rtc::CopyOnWriteBuffer* packet, int64_t ts);
-
+     void OnRtpPacket(webrtc::MediaType media_type,
+            const webrtc::RtpPacketReceived& packet) override;
     void OnLocalRtcpPacket(webrtc::MediaType media_type,
             const uint8_t* data, size_t len) override;
     void OnFrame(std::unique_ptr<RtpFrameObject> frame) override;

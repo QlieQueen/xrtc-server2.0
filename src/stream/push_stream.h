@@ -38,6 +38,9 @@ public:
     bool GetVideoSource(std::vector<StreamParams>& source);
 
 private:
+    void OnRtpPacket(PeerConnection*, webrtc::MediaType media_type,
+            const webrtc::RtpPacketReceived& packet);
+
     bool GetSource(const std::string& mid, std::vector<StreamParams>& source);
 };
 

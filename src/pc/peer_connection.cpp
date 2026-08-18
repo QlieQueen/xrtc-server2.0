@@ -150,6 +150,13 @@ void PeerConnection::OnRtpPacketReceived(TransportController*,
     }
 }
 
+void PeerConnection::OnRtpPacket(webrtc::MediaType media_type,
+        const webrtc::RtpPacketReceived& packet)
+{
+    SignalRtpPacket(this, media_type, packet);
+}
+
+
 void PeerConnection::OnRtcpPacketReceived(TransportController*,
         rtc::CopyOnWriteBuffer* packet, int64_t ts)
 {

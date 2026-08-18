@@ -40,8 +40,13 @@ enum class RtcStreamType {
 class RtcStreamListener {
 public:
     virtual void OnConnectionState(RtcStream* stream, PeerConnectionState state) = 0;
+
+    // transparent
     virtual void OnRtpPacketReceived(RtcStream* stream, const char* data, size_t len) = 0;
     virtual void OnRtcpPacketReceived(RtcStream* stream, const char* data, size_t len) = 0;
+    // live
+    virtual void OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
+            const webrtc::RtpPacketReceived& packetr) = 0;
     virtual void OnStreamException(RtcStream* stream) = 0;
 };
 
@@ -88,9 +93,9 @@ protected:
 
     PeerConnection* pc;
     
+    RtcStreamListener* listener_ = nullptr;
 private:
     PeerConnectionState state_ = PeerConnectionState::kNew;
-    RtcStreamListener* listener_ = nullptr;
     TimerWatcher* ice_timeout_watcher_ = nullptr;
 
     friend class RtcStreamManager;

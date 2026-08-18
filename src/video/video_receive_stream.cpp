@@ -23,7 +23,9 @@ VideoReceiveStream::~VideoReceiveStream() {
 
 void VideoReceiveStream::OnRtpPacket(const webrtc::RtpPacketReceived& packet) {
     if (packet.Ssrc() == config_.rtp.rtx_ssrc) {
-        rtx_receive_stream_->OnRtpPacket(packet);
+        if (rtx_receive_stream_) {
+            rtx_receive_stream_->OnRtpPacket(packet);
+        }
     } else {
         rtp_video_stream_receiver_.OnRtpPacket(packet);
     }

@@ -52,6 +52,12 @@ RtpVideoStreamReceiver::~RtpVideoStreamReceiver() {
 }
 
 void RtpVideoStreamReceiver::OnRtpPacket(const webrtc::RtpPacketReceived& packet) {
+    if (config_.rtp_rtcp_module_observer) {
+        // 包含正常的包和rtx重传包
+        config_.rtp_rtcp_module_observer->OnRtpPacket(webrtc::MediaType::VIDEO,
+                packet);
+    }
+    
     ReceivePacket(packet);
 
     // recovered() = 由 RTX/重传恢复出的包. 接收统计只应反映"真实到达"的包,

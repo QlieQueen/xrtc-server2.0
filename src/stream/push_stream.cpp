@@ -26,6 +26,7 @@ PushStream::PushStream(EventLoop* el, PortAllocator* allocator,
         bool audio, bool video, uint32_t log_id) :
     RtcStream(el, allocator, uid, stream_name, audio, video, log_id)
 {
+    pc->SignalRtpPacket.connect(this, &PushStream::OnRtpPacket);
 }
 
 PushStream::~PushStream() {
@@ -67,6 +68,14 @@ bool PushStream::GetSource(const std::string& mid, std::vector<StreamParams>& so
 
     source = content->streams();
     return true;
+}
+
+void PushStream::OnRtpPacket(PeerConnection*, webrtc::MediaType media_type,
+        const webrtc::RtpPacketReceived& packet)
+{
+    if (listener_) {
+        listener_->OnRtpPacket(this, media_type, packet);
+    }
 }
 
 } // namespace xrtc

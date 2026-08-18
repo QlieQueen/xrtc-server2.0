@@ -2,6 +2,7 @@
 #define __XRTCSERVER_MODULES_RTP_RTCP_RTP_RTCP_CONFIG_H_
 
 #include <system_wrappers/include/clock.h>
+#include <modules/rtp_rtcp/source/rtp_packet_received.h>
 
 #include "base/event_loop.h"
 #include "modules/rtp_rtcp/receive_stat.h"
@@ -13,6 +14,8 @@ class RtpRtcpModuleObserver {
 public:
     virtual ~RtpRtcpModuleObserver() {}
 
+    virtual void OnRtpPacket(webrtc::MediaType media_type,
+            const webrtc::RtpPacketReceived& packet) = 0;
     virtual void OnLocalRtcpPacket(webrtc::MediaType media_type,
             const uint8_t* data, size_t len) = 0;
     virtual void OnFrame(std::unique_ptr<RtpFrameObject> frame) = 0;
