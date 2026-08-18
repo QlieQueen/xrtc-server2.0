@@ -35,7 +35,7 @@
 ```cpp
 // RTP 转发：push 收到 → 透传给 pull（原样，不改 SSRC/seq）
 void RtcStreamManager::OnRtpPacketReceived(RtcStream* stream, const char* data, size_t len) {
-    if (RtcStreamType::k_push == stream->stream_type()) {
+    if (RtcStreamType::kPush == stream->stream_type()) {
         PullStream* pull_stream = FindPullStream(stream->get_stream_name());
         if (pull_stream) pull_stream->SendRtp(data, len);      // 原样转发
     }
@@ -43,10 +43,10 @@ void RtcStreamManager::OnRtpPacketReceived(RtcStream* stream, const char* data, 
 
 // RTCP 转发：双向透传！
 void RtcStreamManager::OnRtcpPacketReceived(RtcStream* stream, const char* data, size_t len) {
-    if (RtcStreamType::k_push == stream->stream_type()) {
+    if (RtcStreamType::kPush == stream->stream_type()) {
         PullStream* pull_stream = FindPullStream(stream->get_stream_name());
         if (pull_stream) pull_stream->SendRtcp(data, len);      // 上行 RTCP → 透传给拉流端
-    } else if (RtcStreamType::k_pull == stream->stream_type()) {
+    } else if (RtcStreamType::kPull == stream->stream_type()) {
         PushStream* push_stream = FindPushStream(stream->get_stream_name());
         if (push_stream) push_stream->SendRtcp(data, len);      // 下行 RTCP（含拉流端 NACK）→ 透传给推流端
     }

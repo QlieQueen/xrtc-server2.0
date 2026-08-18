@@ -33,8 +33,8 @@ namespace xrtc {
 class RtcStream;
 
 enum class RtcStreamType {
-    k_push,
-    k_pull
+    kPush,
+    kPull
 };
 
 class RtcStreamListener {

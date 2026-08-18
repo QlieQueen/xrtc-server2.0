@@ -32,7 +32,7 @@ public:
     ~PushStream() override;
 
     std::string CreateOffer() override;
-    RtcStreamType stream_type() override { return RtcStreamType::k_push; }
+    RtcStreamType stream_type() override { return RtcStreamType::kPush; }
 
     bool GetAudioSource(std::vector<StreamParams>& source);
     bool GetVideoSource(std::vector<StreamParams>& source);

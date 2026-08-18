@@ -330,9 +330,9 @@ void RtcStreamManager::OnConnectionState(RtcStream* stream,
         PeerConnectionState state)
 {
     if (state == PeerConnectionState::kFailed) {
-        if (stream->stream_type() == RtcStreamType::k_push) {
+        if (stream->stream_type() == RtcStreamType::kPush) {
             RemovePushStream(stream);
-        } else if (stream->stream_type() == RtcStreamType::k_pull) {
+        } else if (stream->stream_type() == RtcStreamType::kPull) {
             if (stream->IsTransparent()) {
                 RemovePullStream(stream);
             } else {
@@ -346,14 +346,35 @@ void RtcStreamManager::OnConnectionState(RtcStream* stream,
 void RtcStreamManager::OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
         const webrtc::RtpPacketReceived& packet)
 {
-    RTC_LOG(LS_WARNING) << "==============seq: " << packet.SequenceNumber();
+    //RTC_LOG(LS_WARNING) << "==============seq: " << packet.SequenceNumber();
+    if (RtcStreamType::kPush == stream->stream_type()) {
+        PullStreamMap::iterator pit = multi_pull_streams_.find(stream->get_stream_name());
+        if (pit == multi_pull_streams_.end()) {
+            return;
+        }
+
+        UserStreamMap* umap = pit->second;
+        if (!umap) {
+            return;
+        }
+
+        // 分发给所有拉流端
+        UserStreamMap::iterator uit = umap->begin();
+        for (; uit != umap->end(); ++uit) {
+            PullStream* pull_stream = uit->second;
+            if (pull_stream) {
+                pull_stream->SendRtp((const char*)packet.data(), packet.size());
+            }
+        }
+    }
+
 }
 
 // transparent
 void RtcStreamManager::OnRtpPacketReceived(RtcStream* stream, 
         const char* data, size_t len) 
 {
-    if (RtcStreamType::k_push == stream->stream_type()) {
+    if (RtcStreamType::kPush == stream->stream_type()) {
         if (stream->IsTransparent()) {
             PullStream* pull_stream = FindPullStream(stream->get_stream_name());
             if (pull_stream) {
@@ -367,12 +388,12 @@ void RtcStreamManager::OnRtcpPacketReceived(RtcStream* stream,
         const char* data, size_t len)
 {
     if (stream->IsTransparent()) {
-        if (RtcStreamType::k_push == stream->stream_type()) {
+        if (RtcStreamType::kPush == stream->stream_type()) {
             PullStream* pull_stream = FindPullStream(stream->get_stream_name());
             if (pull_stream) {
                 pull_stream->SendRtcp(data, len);
             }
-        } else if (RtcStreamType::k_pull == stream->stream_type()) {
+        } else if (RtcStreamType::kPull == stream->stream_type()) {
             PushStream* push_stream = FindPushStream(stream->get_stream_name());
             if (push_stream) {
                 push_stream->SendRtcp(data, len);
@@ -384,9 +405,9 @@ void RtcStreamManager::OnRtcpPacketReceived(RtcStream* stream,
 }
 
 void RtcStreamManager::OnStreamException(RtcStream* stream) {
-    if (RtcStreamType::k_push == stream->stream_type()) {
+    if (RtcStreamType::kPush == stream->stream_type()) {
         RemovePushStream(stream);
-    } else if (RtcStreamType::k_pull == stream->stream_type()) {
+    } else if (RtcStreamType::kPull == stream->stream_type()) {
         if (stream->IsTransparent()) {
             RemovePullStream(stream);
         } else {
