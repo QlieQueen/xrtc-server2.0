@@ -180,6 +180,7 @@ int RtcStreamManager::CreatePushStream(uint64_t uid,
         bool audio,
         bool video,
         bool is_dtls,
+        bool is_pli,
         const std::string& mode,
         uint32_t log_id,
         rtc::RTCCertificate* certificate,
@@ -195,6 +196,7 @@ int RtcStreamManager::CreatePushStream(uint64_t uid,
             audio, video, log_id);
     stream->RegisterListener(this);
     stream->set_mode(mode);
+    stream->set_pli(is_pli);
 
     if (is_dtls) {
         stream->Start(certificate);

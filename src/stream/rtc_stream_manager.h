@@ -49,6 +49,7 @@ public:
             bool audio,
             bool video,
             bool is_dtls,
+            bool is_pli,
             const std::string& mode,
             uint32_t log_id,
             rtc::RTCCertificate* certificate,

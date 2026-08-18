@@ -22,6 +22,7 @@ public:
     // 设置远端媒体流SSRC: 转交RTCPReceiver, 用于SR包过滤
     void SetRemoteSsrc(uint32_t ssrc);
     void SendNack(const std::vector<uint16_t>& nack_list);
+    void SendRTCP(webrtc::RTCPPacketType packet_type);
 
 private:
     RTCPSender::FeedbackState GetFeedbackState();
@@ -33,6 +34,7 @@ private:
 
     // RTCP周期上报定时器, 按conf的rtcp_report_timer_interval创建
     TimerWatcher* rtcp_report_timer_ = nullptr;
+    TimerWatcher* request_pli_timer_ = nullptr;
 };
 
 } // namespace xrtc

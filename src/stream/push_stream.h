@@ -33,6 +33,7 @@ public:
 
     std::string CreateOffer() override;
     RtcStreamType stream_type() override { return RtcStreamType::kPush; }
+    void set_pli(bool is_pli) { pc->set_pli(is_pli); }
 
     bool GetAudioSource(std::vector<StreamParams>& source);
     bool GetVideoSource(std::vector<StreamParams>& source);

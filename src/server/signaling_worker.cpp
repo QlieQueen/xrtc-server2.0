@@ -452,6 +452,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
     int video;
     int is_dtls;
     std::string mode;
+    int is_pli;
 
     try {
         uid = root["uid"].asUInt64();
@@ -460,6 +461,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
         video = root["video"].asInt();
         is_dtls = root.isMember("is_dtls") ? root["is_dtls"].asInt() : 1;
         mode = root["mode"].asString();
+        is_pli = root["is_pli"].asInt();
     } catch (const Json::Exception& e) {
         RTC_LOG(LS_WARNING) << "parse json body error: " << e.what()
             << "log_id: " << log_id;
@@ -472,6 +474,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
         << "] video[" << video
         << "] is_dtls[" << is_dtls
         << "] mode[" << mode
+        << "] is_pli[" << is_pli
         << "] signaling server push request";
 
     std::shared_ptr<RtcMsg> msg = std::make_shared<RtcMsg>();
@@ -481,6 +484,7 @@ int SignalingWorker::ProcessPush(int cmdno, TcpConnection* c,
     msg->audio = audio;
     msg->video = video;
     msg->is_dtls = is_dtls;
+    msg->is_pli = is_pli;
     msg->mode = mode;
     msg->log_id = log_id;
     msg->worker = this;

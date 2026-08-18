@@ -29,6 +29,7 @@ public:
     } rtp;
 
     RtpRtcpModuleObserver* rtp_rtcp_module_observer = nullptr;
+    int request_pli_interval_ms = 0;
 };
 
 } // namespce xrtc

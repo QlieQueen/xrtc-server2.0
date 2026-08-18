@@ -139,6 +139,7 @@ void RtcWorker::ProcessPush(std::shared_ptr<RtcMsg> msg) {
             msg->audio,
             msg->video,
             msg->is_dtls,
+            msg->is_pli,
             msg->mode,
             msg->log_id,
             (rtc::RTCCertificate*)(msg->certificate),

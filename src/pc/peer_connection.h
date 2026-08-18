@@ -71,6 +71,7 @@ public:
     }
     
     void set_mode(const std::string& mode);
+    void set_pli(bool is_pli) { is_pli_ = is_pli; }
     bool IsTransparent() const { return transport_mode_ == TransportMode::kTransparent; }
     bool IsLive() const { return transport_mode_ == TransportMode::kLive; }
 
@@ -117,6 +118,7 @@ private:
     EventLoop* el_;
     webrtc::Clock* clock_;
     bool is_dtls_ = true;
+    bool is_pli_ = false;
     TransportMode transport_mode_ = TransportMode::kLive;
     std::unique_ptr<SessionDescription> local_desc_;
     std::unique_ptr<SessionDescription> remote_desc_;

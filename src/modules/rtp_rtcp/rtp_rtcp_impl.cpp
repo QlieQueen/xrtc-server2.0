@@ -16,6 +16,12 @@ void RtcpReportCb(EventLoop* /*el*/, TimerWatcher* /*w*/, void* data) {
     rtp_rtcp->TimeToSendRTCP();
 }
 
+
+void RequestPliCb(EventLoop* /*el*/, TimerWatcher* /*w*/, void* data) {
+    RtpRtcpImpl* rtp_rtcp = (RtpRtcpImpl*)data;
+    rtp_rtcp->SendRTCP(webrtc::kRtcpPli);
+}
+
 } // namespace
 
 
@@ -24,7 +30,10 @@ RtpRtcpImpl::RtpRtcpImpl(const RtpRtcpConfig& config) :
     rtcp_sender_(config),
     rtcp_receiver_(config)
 {
-
+    if (config.request_pli_interval_ms > 0) {
+        request_pli_timer_ = el_->CreateTimer(RequestPliCb, this, true);
+        el_->StartTimer(request_pli_timer_, config.request_pli_interval_ms * 1000);
+    }
 }
 
 RtpRtcpImpl::~RtpRtcpImpl() {
@@ -32,6 +41,12 @@ RtpRtcpImpl::~RtpRtcpImpl() {
     if (rtcp_report_timer_) {
         el_->DeleteTimer(rtcp_report_timer_);
         rtcp_report_timer_ = nullptr;
+    }
+
+    // 析构时删除周期定时器, 避免回调悬垂
+    if (request_pli_timer_) {
+        el_->DeleteTimer(request_pli_timer_);
+        request_pli_timer_ = nullptr;
     }
 }
 
@@ -47,6 +62,10 @@ void RtpRtcpImpl::TimeToSendRTCP() {
 void RtpRtcpImpl::SendNack(const std::vector<uint16_t>& nack_list) {
     rtcp_sender_.SendRTCP(GetFeedbackState(), webrtc::kRtcpNack,
             nack_list.size(), nack_list.data());
+}
+
+void RtpRtcpImpl::SendRTCP(webrtc::RTCPPacketType packet_type) {
+    RTC_LOG(LS_WARNING) << "==============is_pli";
 }
 
 // 设置RTCP开关: 开启时创建周期定时器(按conf配置间隔触发上报), 关闭时删除

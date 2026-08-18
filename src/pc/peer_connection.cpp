@@ -572,6 +572,9 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
             }
 
             config.rtp_rtcp_module_observer = this;
+            if (is_pli_) {
+                config.request_pli_interval_ms = 2000;  // TODO: PLI请求间隔，后续可以修改成配置文件方式进行配置
+            }
             video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
         }
         

@@ -41,6 +41,7 @@ struct RtcMsg {
     int audio = 0;
     int video = 0;
     int is_dtls = 1;
+    int is_pli = 0;
     std::string mode;
     uint32_t log_id = 0;
     void* worker = nullptr;

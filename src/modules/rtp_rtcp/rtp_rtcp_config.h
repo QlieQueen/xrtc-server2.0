@@ -29,6 +29,7 @@ struct RtpRtcpConfig {
     ReceiveStat* receive_stat = nullptr; // 接收统计指针(4.10 接入), 传给 RTCPSender 作 RR 报告块数据源
     absl::optional<uint32_t> rtcp_report_interval_ms;
     RtpRtcpModuleObserver* rtp_rtcp_module_observer = nullptr;
+    int request_pli_interval_ms = 0;
 };
 
 } // namespace xrtc
