@@ -17,6 +17,9 @@ namespace xrtc {
 class RTCPSender {
 public:
     struct FeedbackState {
+        uint32_t packets_sent = 0;
+        size_t media_bytes_sent = 0;
+
         // 接收端本地时钟记录"最近一次收到SR"的时刻(NTP秒/分数部分),
         // 与当前发RR时刻做差即DLSR(延迟)
         uint32_t last_rr_ntp_secs = 0;
@@ -65,6 +68,7 @@ private:
     std::vector<webrtc::rtcp::ReportBlock> CreateRtcpReportBlocks(
             const FeedbackState& feedback_state);
 
+    void BuildSR(const RtcpContext& ctx, PacketSender& sender);
     // 构建RR(接收端统计报告)报文, 把打包结果追加到复合包
     void BuildRR(const RtcpContext& ctx, PacketSender& sender);
     void BuildNack(const RtcpContext& ctx, PacketSender& sender);

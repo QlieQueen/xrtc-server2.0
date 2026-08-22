@@ -1,6 +1,7 @@
 #include "modules/rtp_rtcp/rtcp_sender.h"
 
 #include <rtc_base/logging.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/sender_report.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/nack.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/pli.h>
@@ -80,6 +81,7 @@ RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
 {
     // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
     // SR(发送端报告)等其他类型的构建函数在后续课程注册
+    builders_[webrtc::kRtcpSr] = &RTCPSender::BuildSR;
     builders_[webrtc::kRtcpRr] = &RTCPSender::BuildRR;
     builders_[webrtc::kRtcpNack] = &RTCPSender::BuildNack;
     builders_[webrtc::kRtcpPli] = &RTCPSender::BuildPli;
@@ -258,6 +260,13 @@ std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks(
     return result;
 }
 
+void RTCPSender::BuildSR(const RtcpContext& ctx, PacketSender& sender) {
+    webrtc::rtcp::SenderReport sr;
+    sr.SetSenderSsrc(ssrc_);
+    sr.SetPacketCount(ctx.feedback_state_.packets_sent);
+    sr.SetOctetCount(ctx.feedback_state_.media_bytes_sent);
+    sender.AppendPacket(sr);    
+}
 
 // 构建RR(接收端统计报告)报文: 头部 SSRC 填本端(接收方)的 ssrc,
 // 报告块从接收统计取(4.10 打通链路, 块内字段由 4.11 填实)

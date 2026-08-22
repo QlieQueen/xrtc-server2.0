@@ -112,6 +112,15 @@ void RtpRtcpImpl::UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& p
 RTCPSender::FeedbackState RtpRtcpImpl::GetFeedbackState() {
     RTCPSender::FeedbackState state;
 
+    webrtc::StreamDataCounters rtp_stats;
+    webrtc::StreamDataCounters rtx_stats;
+    rtp_sender_.GetDataCounters(&rtp_stats, &rtx_stats);
+    // 只统计负载的字节数，头部和拓展的字节数不统计
+    state.packets_sent = rtp_stats.transmitted.packets + 
+        rtx_stats.transmitted.packets;
+    state.media_bytes_sent = rtp_stats.transmitted.payload_bytes +
+        rtx_stats.transmitted.payload_bytes;
+
     uint32_t receive_ntp_secs;
     uint32_t receive_ntp_frac;
     state.remote_sr = 0;
