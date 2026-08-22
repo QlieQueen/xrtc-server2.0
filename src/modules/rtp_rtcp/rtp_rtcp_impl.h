@@ -4,6 +4,7 @@
 #include "modules/rtp_rtcp/rtp_rtcp_config.h"
 #include "modules/rtp_rtcp/rtcp_sender.h"
 #include "modules/rtp_rtcp/rtcp_receiver.h"
+#include "modules/rtp_rtcp/rtp_sender.h"
 
 namespace xrtc {
 
@@ -23,6 +24,8 @@ public:
     void SetRemoteSsrc(uint32_t ssrc);
     void SendNack(const std::vector<uint16_t>& nack_list);
     void SendRTCP(webrtc::RTCPPacketType packet_type);
+    void SetSendingStatus(bool sending);
+    void UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet);
 
 private:
     RTCPSender::FeedbackState GetFeedbackState();
@@ -31,6 +34,7 @@ private:
     EventLoop* el_;
     RTCPSender rtcp_sender_;
     RTCPReceiver rtcp_receiver_;
+    RtpSender rtp_sender_;
 
     // RTCP周期上报定时器, 按conf的rtcp_report_timer_interval创建
     TimerWatcher* rtcp_report_timer_ = nullptr;

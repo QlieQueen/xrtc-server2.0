@@ -2,6 +2,7 @@
 #define __XRTCSERVER_VIDEO_VIDEO_SEND_STREAM_H_
 
 #include "video/video_send_stream_config.h"
+#include "modules/rtp_rtcp/rtp_rtcp_impl.h"
 
 namespace xrtc {
 
@@ -10,8 +11,11 @@ public:
     VideoSendStream(const VideoSendStreamConfig& config);
     ~VideoSendStream();
 
+    void UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet);
+
 private:
     VideoSendStreamConfig config_;
+    std::unique_ptr<RtpRtcpImpl> rtp_rtcp_;
 };
 
 

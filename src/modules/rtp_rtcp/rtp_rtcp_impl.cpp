@@ -28,7 +28,8 @@ void RequestPliCb(EventLoop* /*el*/, TimerWatcher* /*w*/, void* data) {
 RtpRtcpImpl::RtpRtcpImpl(const RtpRtcpConfig& config) :
     el_(config.el),
     rtcp_sender_(config),
-    rtcp_receiver_(config)
+    rtcp_receiver_(config),
+    rtp_sender_(config)
 {
     if (config.request_pli_interval_ms > 0) {
         request_pli_timer_ = el_->CreateTimer(RequestPliCb, this, true);
@@ -98,6 +99,14 @@ void RtpRtcpImpl::IncomingRtcpPacket(const uint8_t* data, size_t len) {
 void RtpRtcpImpl::SetRemoteSsrc(uint32_t ssrc) {
     rtcp_sender_.SetRemoteSsrc(ssrc);
     rtcp_receiver_.SetRemoteSsrc(ssrc);
+}
+
+void RtpRtcpImpl::SetSendingStatus(bool sending) {
+    rtcp_sender_.SetSendingStatus(sending);
+}
+
+void RtpRtcpImpl::UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet) {
+    rtp_sender_.UpdateRtpStat(now_ms, packet);
 }
 
 RTCPSender::FeedbackState RtpRtcpImpl::GetFeedbackState() {
