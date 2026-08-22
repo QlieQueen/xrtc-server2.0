@@ -233,6 +233,8 @@ std::string PeerConnection::CreateOffer(const RTCOfferAnswerOptions& options) {
             for (auto stream : video_source_) {
                 video->add_stream(stream);
             }
+
+            CreateVideoSendStream(video.get());
         }
     }
     
@@ -582,6 +584,21 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
     }
 }
 
+void PeerConnection::CreateVideoSendStream(VideoContentDescription* video_content) {
+    for (auto send_stream : video_content->streams()) {
+        uint32_t ssrc = send_stream.FirstSsrc();
+        if (ssrc != 0) {
+            local_video_ssrc_ = ssrc;
+
+            VideoSendStreamConfig config;
+            config.el = el_;
+            config.clock = clock_;
+            config.rtp_rtcp_module_observer = this;
+
+            video_send_stream_ = std::make_unique<VideoSendStream>(config);
+        }
+    }
+}
 
 int PeerConnection::SendRtp(const char* data, size_t len) {
     if (transport_controller_) {
