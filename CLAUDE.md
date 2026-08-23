@@ -42,7 +42,7 @@ rtcbase 目录结构：`src/{rtc_base, api, common_video, modules, system_wrappe
 
 ## 架构
 
-单进程、双 server 模型，全部基于自研 **EventLoop**（epoll 封装，`src/base/event_loop.{h,cpp}`，IO/Timer/Notify watcher + pipe 线程间通信）：
+单进程、双 server 模型，全部基于自研 **EventLoop**（libev 封装，Linux 上走 epoll 后端；`src/base/event_loop.{h,cpp}`，IO/Timer watcher 统一抽象；跨线程通知 = worker 内 pipe + IOWatcher）：
 
 ```
                  ┌────────────────────────── xrtcserver ──────────────────────────┐

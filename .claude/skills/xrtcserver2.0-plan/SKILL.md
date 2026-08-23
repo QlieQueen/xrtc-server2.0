@@ -1,6 +1,6 @@
 ---
 name: "xrtcserver2.0-plan"
-description: "消息流程 + lesson-by-lesson 方式教学，参照 xrtc2.0-9.9 课程目录（一节课一个目录），手写实现 1V多（一推多拉）WebRTC 媒体服务"
+description: "消息流程 + lesson-by-lesson 方式教学，参照 git 仓库 xrtcserver_v2（每课一个 commit，v1.0→v16.1 覆盖全部 15 章），手写实现 1V多（一推多拉）WebRTC 媒体服务"
 ---
 
 # xrtcserver2.0 实现路线
@@ -8,20 +8,28 @@ description: "消息流程 + lesson-by-lesson 方式教学，参照 xrtc2.0-9.9 
 ## 仓库路径
 
 - **你的 xrtc-server2.0**：`/home/ydqun/workspace/webrtc/xrtc-server2.0`
-- **参考课程**：`/home/ydqun/workspace/webrtc/xrtc2.0-9.9/`（一节课一个目录，`xrtcserver_v2` 为起点，终点 `9.9`）
+- **参考课程**：`/home/ydqun/workspace/webrtc/xrtcserver_v2`（git 工程，89 个提交，v1.0 → v16.1，覆盖全部 15 章）
 - **rtcbase**：`/home/ydqun/workspace/webrtc/rtcbase`（软链 → `rtcbase_v2`）
 - **背景笔记**：`/home/ydqun/workspace/webrtc/xrtc-server2.0/note/`
 
+## 参考仓库导航（重要）
+
+- 每课 = 一个 commit，**commit message 就是版本号**（如 `v10.3`），**不是 git tag**
+- 看某课增量：`git show <hash>`；看相邻两课差异：`git diff <hashA> <hashB>`
+- 全量版本→hash 映射：`git log --oneline`（89 行）；常用版本 hash 见文末"参考文件速查"
+- 旧目录快照 `/home/ydqun/workspace/webrtc/xrtc2.0-9.9/`（一课一目录，只到 9.9）已弃用
+- 版本号对照：参考 commit `vX.Y` ↔ 你工程提交 `v2_X.Y`（如参考 `v3.2` = 你 `v2_3.2`）
+
 ## 与参考项目的差异（重要）
 
-- xrtc-server（Google 风格版）的参考是 **git commit 序列**；本工程的参考课程是**目录快照**，一课一目录
-- 每课 = 对比相邻目录的 diff（`diff -rq dirA/src dirB/src` + 关键文件 `diff`）
+- 参考课程本身就是 **git commit 序列**，与 xrtc-server（Google 风格版）的参考方式一致，无需对比目录
+- 每课 = 参考 commit 相对前一 commit 的增量（`git show`）
 - 当前 2.0 基线 = `xrtcserver_v2`（1V1 DTLS）+ 已修的 6 个 bug（见 `note/bug-fix-对比报告.md`）
 
 ## 教学方式
 
 1. **消息流程驱动**：始终知道"这个消息现在到了哪一步"（PUSH / ANSWER / RTP / RTCP / STOP）
-2. **lesson-by-lesson**：按课程目录顺序逐课移植，每课 = 参考目录相对前一目录的增量
+2. **lesson-by-lesson**：按 `git log --oneline` 顺序逐课移植，每课 = 参考 commit 相对前一 commit 的增量
 3. **Phase 开始前三问**（grill）：
    - 这个 Phase 的背景知识你了解吗？（`note/` 下的对应文档）
    - 你想自己手写还是我逐步指导？
@@ -39,20 +47,31 @@ description: "消息流程 + lesson-by-lesson 方式教学，参照 xrtc2.0-9.9 
 | **7.x** | **转发架构 + 1V多 核心**：双模式 / multi_pull_streams_ / 一推多拉广播 | 7.3 ~ 7.8 | **主干** |
 | **8.x** | PLI 关键帧请求（新拉流端快速出画） | 8.2 ~ 8.3 | **必需** |
 | **9.x** | 下行发送链路 + SR 时间线透传（多路音视频同步） | 9.1 ~ 9.9 | **完整版** |
+| **10.x** | 下行 RTP Cache：RtcPacket + push_stream 2048 槽位缓存 + FindVideoPacket | 10.1 ~ 10.6 | **待办项 1** |
+| 11.x | 下行统计/SR 链（11.5 回滚 132 行，作者走弯路重做，可参考） | 11.2 ~ 11.5 | 参考价值 |
+| **12.x** | 下行 NACK 恢复：rtcp_receiver 大改 + nack_requester/video_receive_stream 联动 | 12.1 ~ 12.4 | **待办项 2** |
+| 13.x | 音频接收链路（audio_receive_stream / channel_receive） | 13.1 ~ 13.4 | 扩展 |
+| 14.x | 音频发送链路（audio_send_stream） | 14.1 ~ 14.3 | 扩展 |
+| **15.x** | 多拉 QoS 整合：rtc_stream_manager 大重构 + rtc_server/rtc_worker 联动 | 15.2 ~ 15.12 | 收尾 |
+| 16.1 | 修 bug 收尾 | — | — |
 
 ## 当前进度
 
-| Phase | 课程 | 内容 | 状态 | 参考目录 |
+| Phase | 课程 | 内容 | 状态 | 参考 commit |
 |-------|------|------|------|---------|
-| 0 | — | 基线对齐（2.0 = v2 + 6 bug 修复，1V1 联调通过） | ✅ done | `xrtcserver_v2` |
-| 1 | 2.3 ~ 2.5 | 去 DTLS 明文通路 | ✅ done | `v2_2.3` → `v2_2.5` |
-| 2 | 3.2 ~ 3.11 | RTCP 发送/接收模块 | ✅ done | `v2_3.2` → `v2_3.11` |
-| 3 | 4.1 ~ 4.17 | 视频接收链路 + 接收统计 | ✅ done（17/17 提交，RR/SR/LSR/DLSR/RTT 全链路，含 DebugCompoundRtcpPacket 报告块打印） | `v2_4.1` → `v2_4.17` |
-| 4 | 5.1 ~ 5.5 | 视频帧组装 | ⬜ todo | `v2_5.1` → `v2_5.5` |
-| 5 | 6.1 ~ 6.6 | 抗丢包 NACK/RTX | ⬜ todo | `v2_6.1` → `v2_6.6` |
-| 6 | 7.3 ~ 7.8 | **1V多 核心：双模式 + 多拉流 + 广播** | ⬜ todo | `v2_7.3` → `v2_7.8` |
-| 7 | 8.2 ~ 8.3 | PLI 关键帧请求 | ⬜ todo | `v2_8.2` → `v2_8.3` |
-| 8 | 9.1 ~ 9.9 | 下行 SR 链路 + 时间线透传 | ⬜ todo | `v2_9.1` → `v2_9.9` |
+| 0 | — | 基线对齐（2.0 = v2 + 6 bug 修复，1V1 联调通过） | ✅ done | 7847033(v2.3) 之前 |
+| 1 | 2.3 ~ 2.5 | 去 DTLS 明文通路 | ✅ done | v2.3 → v2.5 |
+| 2 | 3.2 ~ 3.11 | RTCP 发送/接收模块 | ✅ done | v3.2 → v3.11 |
+| 3 | 4.1 ~ 4.17 | 视频接收链路 + 接收统计 | ✅ done（17/17 提交，RR/SR/LSR/DLSR/RTT 全链路，含 DebugCompoundRtcpPacket 报告块打印） | v4.1 → v4.17 |
+| 4 | 5.1 ~ 5.5 | 视频帧组装 | ✅ done | v5.1 → v5.5 |
+| 5 | 6.1 ~ 6.6 | 抗丢包 NACK/RTX | ✅ done | v6.1 → v6.6 |
+| 6 | 7.3 ~ 7.8 | **1V多 核心：双模式 + 多拉流 + 广播** | ✅ done | v7.3 → v7.8 |
+| 7 | 8.2 ~ 8.3 | PLI 关键帧请求 | ✅ done（周期 PLI 联调出画） | v8.2 → v8.3 |
+| 8 | 9.1 ~ 9.9 | 下行 SR 链路 + 时间线透传 | ✅ done（SR 时间线透传闭环联调通过） | v9.1 → v9.9 |
+| 9 | 10.x | 下行 RTP Cache | ⬜ next | v10.1 → v10.6 |
+| 10 | 12.x | 下行 NACK 恢复 | ⬜ 未来 | v12.1 → v12.4 |
+| 11 | 13.x ~ 14.x | 音频收发链路 | ⬜ 未来 | v13.1 → v14.3 |
+| 12 | 15.x | 多拉 QoS 整合 | ⬜ 未来 | v15.2 → v15.12 |
 
 ## Phase 1 课程清单（去 DTLS）
 
@@ -152,16 +171,17 @@ description: "消息流程 + lesson-by-lesson 方式教学，参照 xrtc2.0-9.9 
 
 ## 参考文件速查
 
-| Phase | 参考目录（在 `xrtc2.0-9.9/` 下）|
+| Phase | 参考 commit（`git show <hash>` 查看增量；其他版本 `git log --oneline` 查 hash）|
 |-------|-------------------------------|
-| 1 | `xrtcserver_v2_2.3/` ~ `_2.5/`：pc/peer_connection、pc/transport_controller、server/signaling_worker、src/xrtcserver_def |
-| 2 | `_3.2/` ~ `_3.11/`：modules/rtp_rtcp/rtcp_sender、rtcp_receiver、rtp_rtcp_impl、rtp_rtcp_config |
-| 3 | `_4.1/` ~ `_4.17/`：video/、modules/rtp_rtcp/receive_stat、rtcp_sender、rtcp_receiver |
-| 4 | `_5.1/`、`_5.3/`~`_5.5/`：video/rtp_video_stream_receiver、modules/video_coding/rtp_frame_object |
-| 5 | `_6.1/` ~ `_6.6/`：modules/video_coding/nack_requester、video/rtx_receive_stream、rtcp_sender |
-| 6 | `_7.3/` ~ `_7.8/`：stream/rtc_stream_manager、stream/rtc_stream、stream/push_stream、pc/peer_connection |
-| 7 | `_8.2/` ~ `_8.3/`：rtc_stream_manager、push_stream、rtcp_sender、rtp_rtcp_impl |
-| 8 | `_9.1/` ~ `_9.9/`：video/video_send_stream、modules/rtp_rtcp/rtp_sender、pull_stream、rtcp_receiver、rtcp_sender |
+| 1 | v2.3(7847033) ~ v2.5(b3e14ad)：pc/peer_connection、pc/transport_controller、server/signaling_worker、src/xrtcserver_def |
+| 2 | v3.2(976bbce) ~ v3.11(cb46ce0)：modules/rtp_rtcp/rtcp_sender、rtcp_receiver、rtp_rtcp_impl、rtp_rtcp_config |
+| 3 | v4.1(e03a9b8) ~ v4.17(4e03db5)：video/、modules/rtp_rtcp/receive_stat、rtcp_sender、rtcp_receiver |
+| 4 | v5.1(206909b)、v5.3(75f87be) ~ v5.5(12f5c0c)：video/rtp_video_stream_receiver、modules/video_coding/rtp_frame_object |
+| 5 | v6.1(d451bd7) ~ v6.6(389f7fa)：modules/video_coding/nack_requester、video/rtx_receive_stream、rtcp_sender |
+| 6 | v7.3(a7b266c) ~ v7.8(7da552e)：stream/rtc_stream_manager、stream/rtc_stream、stream/push_stream、pc/peer_connection |
+| 7 | v8.2(2ff526f) ~ v8.3(aa6fa09)：rtc_stream_manager、push_stream、rtcp_sender、rtp_rtcp_impl |
+| 8 | v9.1(eb5f70d) ~ v9.9(38f8b19)：video/video_send_stream、modules/rtp_rtcp/rtp_sender、pull_stream、rtcp_receiver、rtcp_sender |
+| 9+ | v10.1(6348586) ~ v16.1(592b400)：video/、audio/、stream/、modules/rtp_rtcp/ |
 
 ## 每 Phase 验证
 
@@ -173,7 +193,7 @@ description: "消息流程 + lesson-by-lesson 方式教学，参照 xrtc2.0-9.9 
 
 ```
 1. Grill（三问）
-2. 看参考课程对应目录相对前一目录的 diff
+2. 看参考课程对应 commit 相对前一 commit 的增量（`git show <hash>`）
 3. 逐课移植代码到当前 2.0
 4. 编译 + 云机部署 + 客户端联调
 5. git commit（你决定时机）
@@ -211,5 +231,6 @@ RTP 广播（live）：
 3. SetAnswer / StopPull 在多拉流下必须按 (stream_name, uid) 精确定位，uid 校验不能省
 4. PLI 走 `rtcp_sender`（Phase 2 产物），当前 2.0 无此模块，Phase 6/7 前必须先补 Phase 2
 5. SR 时间线透传（9.9）：下行 SR 复用上游 rtp_timestamp/ntp，保证多路拉流音视频同步一致
-6. 课程目录编号不连续（缺 3.1/5.2 等），以实际目录为准
+6. 版本号是 commit message 不是 git tag，且编号不连续（缺 2.1/3.1/5.2/7.1/8.1/9.7/11.1/15.1 等），以 `git log --oneline` 实际提交为准
 7. CMakeLists 用 `file(GLOB ...)` 自动收编新源文件，新增模块无需改 CMake 的 glob
+8. v11.x 是作者走弯路的尝试（11.5 回滚 132 行），对照 v11 内容时留意最终以 v12 之后的实现为准
