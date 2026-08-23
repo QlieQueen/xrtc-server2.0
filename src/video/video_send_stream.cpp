@@ -1,5 +1,7 @@
 #include "video/video_send_stream.h"
 
+#include <modules/rtp_rtcp/source/byte_io.h>
+
 namespace xrtc {
 
 VideoSendStream::VideoSendStream(const VideoSendStreamConfig& config) :
@@ -36,7 +38,38 @@ void VideoSendStream::SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp) {
 std::unique_ptr<webrtc::RtpPacketToSend> VideoSendStream::BuildRtxPacket(
         const webrtc::RtpPacketToSend& packet)
 {
-    return nullptr;
+    std::unique_ptr<webrtc::RtpPacketToSend> rtx_packet = 
+        std::make_unique<webrtc::RtpPacketToSend>(nullptr);
+
+    // 设置RTP头部
+    rtx_packet->SetPayloadType(config_.rtp.rtx.payload_type);
+    rtx_packet->SetSsrc(config_.rtp.local_rtx_ssrc);
+    rtx_packet->SetMarker(packet.Marker());
+    rtx_packet->SetTimestamp(packet.Timestamp());
+    rtx_packet->SetSequenceNumber(rtx_seq_++);
+    rtx_packet->SetCsrcs(packet.Csrcs());
+
+    // 分配payload的内存
+    uint8_t* rtx_payload = rtx_packet->AllocatePayload(
+            packet.payload_size() + webrtc::kRtxHeaderSize);
+    if (!rtx_payload) {
+        return nullptr;
+    }
+
+    // add OSN
+    webrtc::ByteWriter<uint16_t>::WriteBigEndian(rtx_payload, packet.SequenceNumber());
+
+    // copy原始的负载
+    auto payload = packet.payload();
+    memcpy(rtx_payload + webrtc::kRtxHeaderSize, payload.data(), payload.size());
+
+    // 添加其他的属性
+    rtx_packet->set_additional_data(packet.additional_data());
+    rtx_packet->set_capture_time_ms(packet.capture_time_ms());
+
+    rtx_packet->set_retransmitted_sequence_number(packet.SequenceNumber());
+
+    return rtx_packet;
 }
 
 } // namespace xrtc

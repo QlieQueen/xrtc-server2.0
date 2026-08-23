@@ -20,6 +20,7 @@ public:
 private:
     VideoSendStreamConfig config_;
     std::unique_ptr<RtpRtcpImpl> rtp_rtcp_;
+    uint16_t rtx_seq_ = 1000;  // 按照规定其实是一个随机值
 };
 
 

@@ -600,12 +600,21 @@ void PeerConnection::CreateVideoSendStream(VideoContentDescription* video_conten
                 local_video_rtx_ssrc_ = send_stream.ssrcs[1];
             }
 
+            int rtx_payload_type = 0;
+            for (auto codec : video_content->codecs()) {
+                if ("rtx" == codec->name) {
+                    rtx_payload_type = codec->id;
+                    break;
+                }
+            }
+
             VideoSendStreamConfig config;
             config.el = el_;
             config.clock = clock_;
             config.rtp_rtcp_module_observer = this;
             config.rtp.local_ssrc = local_video_ssrc_;
             config.rtp.local_rtx_ssrc = local_video_rtx_ssrc_;
+            config.rtp.rtx.payload_type = rtx_payload_type;
 
             video_send_stream_ = std::make_unique<VideoSendStream>(config);
         }

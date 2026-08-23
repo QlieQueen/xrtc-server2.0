@@ -17,6 +17,10 @@ public:
     struct Rtp {
         uint32_t local_ssrc = 0;
         uint32_t local_rtx_ssrc = 0;
+
+        struct Rtx {
+            int payload_type = 0;
+        } rtx;
     } rtp;
 };
 
