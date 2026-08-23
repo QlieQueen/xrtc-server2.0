@@ -74,6 +74,7 @@ public:
     int SendRtp(const char* data, size_t len);
     int SendRtcp(const char* data, size_t len);
 
+    PeerConnectionState state() const { return state_; }
     std::string ToString();
 
 private:

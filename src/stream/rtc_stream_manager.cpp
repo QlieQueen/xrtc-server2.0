@@ -365,7 +365,7 @@ void RtcStreamManager::OnRtpPacket(RtcStream* stream, webrtc::MediaType media_ty
         for (; uit != umap->end(); ++uit) {
             PullStream* pull_stream = uit->second;
             if (pull_stream) {
-                pull_stream->SendRtp((const char*)packet.data(), packet.size());
+                pull_stream->SendPacket(media_type, packet.data(), packet.size());
             }
         }
     }

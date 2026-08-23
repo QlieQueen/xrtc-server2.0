@@ -22,6 +22,7 @@
 #include <sstream>
 #include <modules/rtp_rtcp/source/rtp_packet_received.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/nack.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/sender_report.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 
 #include "ice/ice_credentials.h"
@@ -590,10 +591,16 @@ void PeerConnection::CreateVideoSendStream(VideoContentDescription* video_conten
         if (ssrc != 0) {
             local_video_ssrc_ = ssrc;
 
+            if (send_stream.ssrcs.size() >= 2) {
+                local_video_rtx_ssrc_ = send_stream.ssrcs[1];
+            }
+
             VideoSendStreamConfig config;
             config.el = el_;
             config.clock = clock_;
             config.rtp_rtcp_module_observer = this;
+            config.rtp.local_ssrc = local_video_ssrc_;
+            config.rtp.local_rtx_ssrc = local_video_rtx_ssrc_;
 
             video_send_stream_ = std::make_unique<VideoSendStream>(config);
         }
@@ -616,6 +623,22 @@ int PeerConnection::SendRtcp(const char* data, size_t len) {
     }
 
     return -1;
+}
+
+int PeerConnection::SendPacket(webrtc::MediaType media_type,
+        const webrtc::RtpPacketToSend& packet)
+{
+    int ret = 0;
+    if (webrtc::MediaType::VIDEO == media_type) {
+        if (!video_send_stream_) {
+            return -1;
+        }
+
+        ret = SendRtp((const char*)packet.data(), packet.size());
+        video_send_stream_->UpdateRtpStat(clock_->TimeInMilliseconds(), packet);
+    }
+
+    return ret;
 }
 
 static void DebugCompoundRtcpPacket(const uint8_t* data, size_t len) {
@@ -670,6 +693,16 @@ static void DebugCompoundRtcpPacket(const uint8_t* data, size_t len) {
                         ss << seq_num << ", ";
                     }
                     RTC_LOG(LS_WARNING) << "=======nack packet ids: " << ss.str();
+                }
+            } break;
+            case webrtc::rtcp::SenderReport::kPacketType:
+            {
+                webrtc::rtcp::SenderReport sr;
+                if (sr.Parse(rtcp_block)) {
+                    RTC_LOG(LS_WARNING) << "========local sr, sender_ssrc: "
+                        << sr.sender_ssrc()
+                        << ", packets count: " << sr.sender_packet_count()
+                        << ", octets count: " << sr.sender_octet_count();
                 }
             } break;
             default:

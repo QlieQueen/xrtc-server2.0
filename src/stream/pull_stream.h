@@ -34,6 +34,9 @@ public:
     std::string CreateOffer() override;
     RtcStreamType stream_type() override { return RtcStreamType::kPull; }
 
+    int SendPacket(webrtc::MediaType media_type, const uint8_t* buf,
+            size_t len);
+
     void AddAudioSource(const std::vector<StreamParams>& source);
     void AddVideoSource(const std::vector<StreamParams>& source);
 };

@@ -54,6 +54,21 @@ void PullStream::AddVideoSource(const std::vector<StreamParams>& source) {
     }
 }
 
+int PullStream::SendPacket(webrtc::MediaType media_type, const uint8_t* buf,
+        size_t len)
+{
+    if (!pc && state() != PeerConnectionState::kConnected) {
+        return -1;
+    }
+
+    webrtc::RtpPacketToSend send_packet(nullptr);
+    if (!send_packet.Parse(buf, len)) {
+        return -1;
+    }
+
+    return pc->SendPacket(media_type, send_packet);
+}
+
 } // namespace xrtc
 
 

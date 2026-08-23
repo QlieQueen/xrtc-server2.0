@@ -59,6 +59,8 @@ public:
     void Destroy();
     std::string CreateOffer(const RTCOfferAnswerOptions& options);
     int SetRemoteSdp(const std::string& sdp);
+    int SendPacket(webrtc::MediaType media_type,
+            const webrtc::RtpPacketToSend& packet);
     
     SessionDescription* remote_desc() { return remote_desc_.get(); }
     SessionDescription* local_desc() { return local_desc_.get(); }
