@@ -11,7 +11,9 @@ struct RTCPReceiver::PacketInformation {
 };
 
 RTCPReceiver::RTCPReceiver(const RtpRtcpConfig& config) :
-    clock_(config.clock)
+    clock_(config.clock),
+    audio_(config.audio),
+    rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer)
 {
 
 }
@@ -165,6 +167,12 @@ void RTCPReceiver::HandleSr(const webrtc::rtcp::CommonHeader& rtcp_block,
         last_received_sr_ntp_ = clock_->CurrentNtpTime();
         remote_sender_packet_count_ = sr.sender_packet_count();
         remote_sender_octet_count_ = sr.sender_octet_count();
+
+        if (rtp_rtcp_module_observer_) {
+            rtp_rtcp_module_observer_->OnSrInfo(
+                audio_ ? webrtc::MediaType::AUDIO : webrtc::MediaType::VIDEO,
+                sr.rtp_timestamp(), sr.ntp());
+        }
     }
 }
 

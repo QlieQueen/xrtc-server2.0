@@ -729,6 +729,13 @@ void PeerConnection::OnFrame(std::unique_ptr<RtpFrameObject> frame) {
     */
 }
 
+void PeerConnection::OnSrInfo(webrtc::MediaType media_type,
+        uint32_t rtp_timestamp, webrtc::NtpTime ntp)
+{
+    SignalSrInfo(this, media_type, rtp_timestamp, ntp);
+}
+
+
 } // namespace xrtc
 
 

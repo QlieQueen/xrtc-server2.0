@@ -94,6 +94,9 @@ public:
     sigslot::signal3<PeerConnection*, webrtc::MediaType, const webrtc::RtpPacketReceived&>
         SignalRtpPacket;
 
+    sigslot::signal4<PeerConnection*, webrtc::MediaType, uint32_t, webrtc::NtpTime>
+        SignalSrInfo;
+
 private:
     ~PeerConnection();
     void OnCandidateAllocateDone(TransportController* transport_controller,
@@ -111,6 +114,8 @@ private:
     void OnLocalRtcpPacket(webrtc::MediaType media_type,
             const uint8_t* data, size_t len) override;
     void OnFrame(std::unique_ptr<RtpFrameObject> frame) override;
+    void OnSrInfo(webrtc::MediaType media_type,
+            uint32_t rtp_timestamp, webrtc::NtpTime ntp) override;
 
     webrtc::MediaType GetMediaType(uint32_t ssrc) const;
     void CreateVideoReceiveStream(VideoContentDescription* video_content);

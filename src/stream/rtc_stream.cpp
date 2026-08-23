@@ -33,6 +33,7 @@ RtcStream::RtcStream(EventLoop* el, PortAllocator* allocator,
     pc->SignalConnectionState.connect(this, &RtcStream::OnConnectionState);
     pc->SignalRtpPacketReceived.connect(this, &RtcStream::OnRtpPacketReceived);
     pc->SignalRtcpPacketReceived.connect(this, &RtcStream::OnRtcpPacketReceived);
+    pc->SignalSrInfo.connect(this, &RtcStream::OnSrInfo);
 }
 
 RtcStream::~RtcStream() {
@@ -81,6 +82,14 @@ void RtcStream::OnRtcpPacketReceived(PeerConnection*,
 {
     if (listener_) {
         listener_->OnRtcpPacketReceived(this, (const char*)packet->data(), packet->size());
+    }
+}
+
+void RtcStream::OnSrInfo(PeerConnection*, webrtc::MediaType media_type,
+        uint32_t rtp_timestamp, webrtc::NtpTime ntp)
+{
+    if (listener_) {
+        listener_->OnSrInfo(this, media_type, rtp_timestamp, ntp);
     }
 }
 

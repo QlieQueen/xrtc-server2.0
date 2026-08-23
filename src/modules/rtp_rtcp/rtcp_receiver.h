@@ -41,6 +41,7 @@ private:
 
 private:
     webrtc::Clock* clock_;  // 时间源: 记录SR到达时刻(CurrentNtpTime)用
+    bool audio_;
     int num_skipped_packet_ = 0;
     // 远端(发送端)媒体流SSRC, 由 SetRemoteSsrc 设置, 用于过滤SR包
     uint32_t remote_ssrc_ = 0;
@@ -53,6 +54,7 @@ private:
     // 最近一次SR包内的累计发送包数/字节数: 将来做发送端统计用
     uint32_t remote_sender_packet_count_ = 0;
     uint32_t remote_sender_octet_count_ = 0;
+    RtpRtcpModuleObserver* rtp_rtcp_module_observer_ = nullptr;
 };
 
 } // namespace xrtc

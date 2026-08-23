@@ -78,6 +78,9 @@ public:
     // live
     void OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
             const webrtc::RtpPacketReceived& packetr) override;
+    void OnSrInfo(RtcStream* stream, webrtc::MediaType media_type,
+                uint32_t rtp_timestamp, webrtc::NtpTime ntp);
+
     void OnStreamException(RtcStream* stream) override;
 
 private:

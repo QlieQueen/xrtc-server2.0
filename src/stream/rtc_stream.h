@@ -48,6 +48,8 @@ public:
     virtual void OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
             const webrtc::RtpPacketReceived& packetr) = 0;
     virtual void OnStreamException(RtcStream* stream) = 0;
+    virtual void OnSrInfo(RtcStream*, webrtc::MediaType media_type,
+            uint32_t rtp_timestamp, webrtc::NtpTime ntp) = 0;
 };
 
 class RtcStream : public sigslot::has_slots<> {
@@ -83,6 +85,8 @@ private:
         rtc::CopyOnWriteBuffer* packet, int64_t /*ts*/);
     void OnRtcpPacketReceived(PeerConnection*, 
             rtc::CopyOnWriteBuffer* packet, int64_t /*ts*/);
+    void OnSrInfo(PeerConnection*, webrtc::MediaType media_type,
+            uint32_t rtp_timestamp, webrtc::NtpTime ntp);
 
 protected:
     EventLoop* el;

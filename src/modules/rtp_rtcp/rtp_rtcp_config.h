@@ -19,6 +19,8 @@ public:
     virtual void OnLocalRtcpPacket(webrtc::MediaType media_type,
             const uint8_t* data, size_t len) = 0;
     virtual void OnFrame(std::unique_ptr<RtpFrameObject> frame) = 0;
+    virtual void OnSrInfo(webrtc::MediaType media_type,
+            uint32_t rtp_timestamp, webrtc::NtpTime ntp) = 0;
 };
 
 struct RtpRtcpConfig {

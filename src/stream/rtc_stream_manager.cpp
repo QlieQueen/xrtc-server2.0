@@ -406,6 +406,14 @@ void RtcStreamManager::OnRtcpPacketReceived(RtcStream* stream,
     }
 }
 
+void RtcStreamManager::OnSrInfo(RtcStream* stream, webrtc::MediaType media_type,
+        uint32_t rtp_timestamp, webrtc::NtpTime ntp)
+{
+    RTC_LOG(LS_WARNING) << "=========OnSrInfo, media_type: " << (int)media_type
+        << ", rtp_timestamp: " << rtp_timestamp
+        << ", ntp: " << ntp.ToMs();
+}
+
 void RtcStreamManager::OnStreamException(RtcStream* stream) {
     if (RtcStreamType::kPush == stream->stream_type()) {
         RemovePushStream(stream);
