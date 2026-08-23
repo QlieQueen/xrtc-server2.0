@@ -38,6 +38,8 @@ private:
             PacketInformation* packet_information);
     void HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,
             PacketInformation* packet_information);
+    void HandleNack(const webrtc::rtcp::CommonHeader& rtcp_block,
+            PacketInformation* packet_information);
 
 private:
     webrtc::Clock* clock_;  // 时间源: 记录SR到达时刻(CurrentNtpTime)用

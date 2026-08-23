@@ -21,6 +21,10 @@ VideoSendStream::~VideoSendStream() {
 
 }
 
+void VideoSendStream::DeliverRtcp(const uint8_t* data, size_t len) {
+    rtp_rtcp_->IncomingRtcpPacket(data, len);   
+}
+
 void VideoSendStream::UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet) {
     rtp_rtcp_->UpdateRtpStat(now_ms, packet);
 }

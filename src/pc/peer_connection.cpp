@@ -167,6 +167,11 @@ void PeerConnection::OnRtcpPacketReceived(TransportController*,
         if (video_receive_stream_) {
             video_receive_stream_->DeliverRtcp(packet->data(), packet->size());
         }
+
+        if (video_send_stream_) {
+            video_send_stream_->DeliverRtcp(packet->data(), packet->size());
+        }
+
     } else {
         SignalRtcpPacketReceived(this, packet, ts);
     }

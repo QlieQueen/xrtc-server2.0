@@ -3,6 +3,7 @@
 #include <rtc_base/logging.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/sender_report.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/nack.h>
 
 namespace xrtc {
 
@@ -134,6 +135,17 @@ bool RTCPReceiver::ParseCompoundPacket(rtc::ArrayView<const uint8_t> packet,
             case webrtc::rtcp::ReceiverReport::kPacketType:
                 HandleRr(rtcp_block, packet_information);
                 break;
+            case webrtc::rtcp::Rtpfb::kPacketType:
+                switch (rtcp_block.fmt()) {
+                    case webrtc::rtcp::Nack::kFeedbackMessageType:
+                        HandleNack(rtcp_block, packet_information);
+                        break;
+                    default:
+                        ++num_skipped_packet_;
+                    break;
+                }
+
+                break;
             default:
                 RTC_LOG(LS_WARNING) << "unknown rtcp packet_type: " << rtcp_block.type();
                 ++num_skipped_packet_;
@@ -182,5 +194,10 @@ void RTCPReceiver::HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,
 
 }
 
+void RTCPReceiver::HandleNack(const webrtc::rtcp::CommonHeader& rtcp_block,
+            PacketInformation* packet_information)
+{
+
+}
 
 } // namespace xrtc
