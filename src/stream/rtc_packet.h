@@ -11,7 +11,7 @@ class RtcPacket {
 public:
     RtcPacket(uint16_t seq_num, webrtc::MediaType media_type,
             bool is_keyframe, int64_t ts,
-            uint8_t* buf, size_t len) :
+            const uint8_t* buf, size_t len) :
         seq_num(seq_num), media_type(media_type),
         is_keyframe(is_keyframe), ts(ts),
         len(len)
