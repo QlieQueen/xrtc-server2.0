@@ -701,6 +701,8 @@ static void DebugCompoundRtcpPacket(const uint8_t* data, size_t len) {
                 if (sr.Parse(rtcp_block)) {
                     RTC_LOG(LS_WARNING) << "========local sr, sender_ssrc: "
                         << sr.sender_ssrc()
+                        << ", rtp_timestamp: " << sr.rtp_timestamp()
+                        << ", ntp: " << sr.ntp().ToMs()
                         << ", packets count: " << sr.sender_packet_count()
                         << ", octets count: " << sr.sender_octet_count();
                 }
@@ -735,6 +737,15 @@ void PeerConnection::OnSrInfo(webrtc::MediaType media_type,
     SignalSrInfo(this, media_type, rtp_timestamp, ntp);
 }
 
+void PeerConnection::SetSrInfo(webrtc::MediaType media_type,
+        uint32_t rtp_timestamp, webrtc::NtpTime ntp)
+{
+    if (webrtc::MediaType::VIDEO == media_type) {
+        if (video_send_stream_) {
+            video_send_stream_->SetSrInfo(rtp_timestamp, ntp);
+        }
+    }
+}
 
 } // namespace xrtc
 

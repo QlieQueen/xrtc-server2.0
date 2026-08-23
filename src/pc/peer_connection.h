@@ -80,6 +80,8 @@ public:
 
     int SendRtp(const char* data, size_t len);
     int SendRtcp(const char* data, size_t len);
+    void SetSrInfo(webrtc::MediaType media_type,
+            uint32_t rtp_timestamp, webrtc::NtpTime ntp);
 
     sigslot::signal2<PeerConnection*, PeerConnectionState>
         SignalConnectionState;

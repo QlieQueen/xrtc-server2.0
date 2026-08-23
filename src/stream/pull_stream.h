@@ -34,6 +34,8 @@ public:
     std::string CreateOffer() override;
     RtcStreamType stream_type() override { return RtcStreamType::kPull; }
 
+    void SetSrInfo(webrtc::MediaType media_type, uint32_t rtp_timestamp,
+            webrtc::NtpTime ntp);
     int SendPacket(webrtc::MediaType media_type, const uint8_t* buf,
             size_t len);
 

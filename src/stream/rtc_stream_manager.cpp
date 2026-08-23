@@ -409,9 +409,33 @@ void RtcStreamManager::OnRtcpPacketReceived(RtcStream* stream,
 void RtcStreamManager::OnSrInfo(RtcStream* stream, webrtc::MediaType media_type,
         uint32_t rtp_timestamp, webrtc::NtpTime ntp)
 {
+    if (stream->IsTransparent()) {
+        return;
+    }
+
     RTC_LOG(LS_WARNING) << "=========OnSrInfo, media_type: " << (int)media_type
         << ", rtp_timestamp: " << rtp_timestamp
         << ", ntp: " << ntp.ToMs();
+    if (RtcStreamType::kPush == stream->stream_type()) {
+        PullStreamMap::iterator pit = multi_pull_streams_.find(stream->get_stream_name());
+        if (pit == multi_pull_streams_.end()) {
+            return;
+        }
+
+        UserStreamMap* umap = pit->second;
+        if (!umap) {
+            return;
+        }
+
+        // 分发给所有拉流端
+        UserStreamMap::iterator uit = umap->begin();
+        for (; uit != umap->end(); ++uit) {
+            PullStream* pull_stream = uit->second;
+            if (pull_stream) {
+                pull_stream->SetSrInfo(media_type, rtp_timestamp, ntp);
+            }
+        }
+    }
 }
 
 void RtcStreamManager::OnStreamException(RtcStream* stream) {

@@ -41,6 +41,7 @@ public:
     // 设置是否为发送端(true生成SR, false生成RR)
     void SetSendingStatus(bool sending) { sending_ = sending; }
     void SetRemoteSsrc(uint32_t ssrc) { remote_ssrc_ = ssrc; }
+    void SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp);
 
     uint32_t cur_report_interval_ms() const { return cur_report_interval_ms_; }
 
@@ -117,6 +118,9 @@ private:
     typedef void (RTCPSender::*BuilderFunc)(const RtcpContext& ctx, PacketSender& sender);
     // 报文类型(type) -> 构建函数 映射表, 在构造函数中注册
     std::map<uint32_t, BuilderFunc> builders_;
+
+    uint32_t latest_rtp_timestamp_ = 0;
+    webrtc::NtpTime latest_ntp_;
 };
 
 } // namespace xrtc

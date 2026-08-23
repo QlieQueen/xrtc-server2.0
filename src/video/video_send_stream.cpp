@@ -25,5 +25,8 @@ void VideoSendStream::UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSen
     rtp_rtcp_->UpdateRtpStat(now_ms, packet);
 }
 
+void VideoSendStream::SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp) {
+    rtp_rtcp_->SetSrInfo(rtp_timestamp, ntp);
+}
 
 } // namespace xrtc

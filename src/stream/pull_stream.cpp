@@ -54,6 +54,14 @@ void PullStream::AddVideoSource(const std::vector<StreamParams>& source) {
     }
 }
 
+void PullStream::SetSrInfo(webrtc::MediaType media_type, uint32_t rtp_timestamp,
+        webrtc::NtpTime ntp)
+{
+    if (pc) {
+        pc->SetSrInfo(media_type, rtp_timestamp, ntp);
+    }
+}
+
 int PullStream::SendPacket(webrtc::MediaType media_type, const uint8_t* buf,
         size_t len)
 {

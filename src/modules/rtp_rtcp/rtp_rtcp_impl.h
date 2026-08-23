@@ -26,6 +26,7 @@ public:
     void SendRTCP(webrtc::RTCPPacketType packet_type);
     void SetSendingStatus(bool sending);
     void UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet);
+    void SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp);
 
 private:
     RTCPSender::FeedbackState GetFeedbackState();

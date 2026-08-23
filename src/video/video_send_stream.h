@@ -12,6 +12,7 @@ public:
     ~VideoSendStream();
 
     void UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet);
+    void SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp);
 
 private:
     VideoSendStreamConfig config_;

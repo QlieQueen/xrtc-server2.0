@@ -109,6 +109,10 @@ void RtpRtcpImpl::UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& p
     rtp_sender_.UpdateRtpStat(now_ms, packet);
 }
 
+void RtpRtcpImpl::SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp) {
+    rtcp_sender_.SetSrInfo(rtp_timestamp, ntp);
+}
+
 RTCPSender::FeedbackState RtpRtcpImpl::GetFeedbackState() {
     RTCPSender::FeedbackState state;
 

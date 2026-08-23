@@ -96,6 +96,11 @@ void RTCPSender::SetRtcpStatus(webrtc::RtcpMode method) {
     method_ = method;
 }
 
+void RTCPSender::SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp) {
+    latest_rtp_timestamp_ = rtp_timestamp;
+    latest_ntp_ = ntp;
+}
+
 // 把某个 RTCP 报文类型标记为待发送, is_volatile=true 表示一次性标记(发送完就删除)
 void RTCPSender::SetFlag(uint32_t type, bool is_volatile) {
     report_flags_.insert(ReportFlag(type, is_volatile));
@@ -261,8 +266,14 @@ std::vector<webrtc::rtcp::ReportBlock> RTCPSender::CreateRtcpReportBlocks(
 }
 
 void RTCPSender::BuildSR(const RtcpContext& ctx, PacketSender& sender) {
+    if (latest_rtp_timestamp_ == 0 || !latest_ntp_.Valid()) {
+        return;
+    }
+
     webrtc::rtcp::SenderReport sr;
     sr.SetSenderSsrc(ssrc_);
+    sr.SetRtpTimestamp(latest_rtp_timestamp_);
+    sr.SetNtp(latest_ntp_);
     sr.SetPacketCount(ctx.feedback_state_.packets_sent);
     sr.SetOctetCount(ctx.feedback_state_.media_bytes_sent);
     sender.AppendPacket(sr);    
