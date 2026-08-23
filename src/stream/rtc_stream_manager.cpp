@@ -346,7 +346,7 @@ void RtcStreamManager::OnConnectionState(RtcStream* stream,
 
 // live
 void RtcStreamManager::OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
-        const webrtc::RtpPacketReceived& packet)
+        std::shared_ptr<RtcPacket> packet)
 {
     //RTC_LOG(LS_WARNING) << "==============seq: " << packet.SequenceNumber();
     if (RtcStreamType::kPush == stream->stream_type()) {
@@ -365,7 +365,7 @@ void RtcStreamManager::OnRtpPacket(RtcStream* stream, webrtc::MediaType media_ty
         for (; uit != umap->end(); ++uit) {
             PullStream* pull_stream = uit->second;
             if (pull_stream) {
-                pull_stream->SendPacket(media_type, packet.data(), packet.size());
+                pull_stream->SendPacket(media_type, packet);
             }
         }
     }
@@ -451,8 +451,12 @@ void RtcStreamManager::OnNackReceived(RtcStream* stream, webrtc::MediaType media
         return;
     }
 
+    PullStream* pull_stream = dynamic_cast<PullStream*>(stream);
     for (auto seq_num : nack_list) {
-        
+        auto packet = push_stream->FindVideoPacket(seq_num);
+        if (packet) {
+            pull_stream->SendPacket(media_type, packet, true);
+        }
     }
 
 }

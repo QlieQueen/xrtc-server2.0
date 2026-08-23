@@ -77,7 +77,7 @@ public:
     void OnRtcpPacketReceived(RtcStream* stream, const char* data, size_t len) override;
     // live
     void OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
-            const webrtc::RtpPacketReceived& packetr) override;
+            std::shared_ptr<RtcPacket> packet) override;
     void OnSrInfo(RtcStream* stream, webrtc::MediaType media_type,
                 uint32_t rtp_timestamp, webrtc::NtpTime ntp);
     void OnNackReceived(RtcStream*, webrtc::MediaType media_type,

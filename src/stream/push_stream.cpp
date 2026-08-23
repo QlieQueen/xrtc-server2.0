@@ -104,7 +104,7 @@ void PushStream::OnRtpPacket(PeerConnection*, webrtc::MediaType media_type,
     CacheVideoPacket(new_packet);
 
     if (listener_) {
-        listener_->OnRtpPacket(this, media_type, packet);
+        listener_->OnRtpPacket(this, media_type, new_packet);
     }
 }
 

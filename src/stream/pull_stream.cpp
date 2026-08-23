@@ -63,16 +63,21 @@ void PullStream::SetSrInfo(webrtc::MediaType media_type, uint32_t rtp_timestamp,
     }
 }
 
-int PullStream::SendPacket(webrtc::MediaType media_type, const uint8_t* buf,
-        size_t len)
+int PullStream::SendPacket(webrtc::MediaType media_type,
+        std::shared_ptr<RtcPacket> packet,
+        bool is_retransmit)
 {
     if (!pc && state() != PeerConnectionState::kConnected) {
         return -1;
     }
 
     webrtc::RtpPacketToSend send_packet(nullptr);
-    if (!send_packet.Parse(buf, len)) {
+    if (!send_packet.Parse(packet->buf, packet->len)) {
         return -1;
+    }
+
+    if (is_retransmit) {
+        send_packet.set_packet_type(webrtc::RtpPacketMediaType::kRetransmission);
     }
 
     return pc->SendPacket(media_type, send_packet);

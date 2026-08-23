@@ -27,6 +27,7 @@
 
 #include "base/event_loop.h"
 #include "pc/peer_connection.h"
+#include "stream/rtc_packet.h"
 
 namespace xrtc {
 
@@ -46,7 +47,7 @@ public:
     virtual void OnRtcpPacketReceived(RtcStream* stream, const char* data, size_t len) = 0;
     // live
     virtual void OnRtpPacket(RtcStream* stream, webrtc::MediaType media_type,
-            const webrtc::RtpPacketReceived& packetr) = 0;
+            std::shared_ptr<RtcPacket> packet) = 0;
     virtual void OnStreamException(RtcStream* stream) = 0;
     virtual void OnSrInfo(RtcStream*, webrtc::MediaType media_type,
             uint32_t rtp_timestamp, webrtc::NtpTime ntp) = 0;

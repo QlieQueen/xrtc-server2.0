@@ -21,6 +21,7 @@
 #define  __XRTCSERVER_STREAM_PULL_STREAM_H_
 
 #include "stream/rtc_stream.h"
+#include "stream/rtc_packet.h"
 
 namespace xrtc {
 
@@ -36,8 +37,9 @@ public:
 
     void SetSrInfo(webrtc::MediaType media_type, uint32_t rtp_timestamp,
             webrtc::NtpTime ntp);
-    int SendPacket(webrtc::MediaType media_type, const uint8_t* buf,
-            size_t len);
+    int SendPacket(webrtc::MediaType media_type,
+            std::shared_ptr<RtcPacket> packet,
+            bool is_retransmit = false);
 
     void AddAudioSource(const std::vector<StreamParams>& source);
     void AddVideoSource(const std::vector<StreamParams>& source);

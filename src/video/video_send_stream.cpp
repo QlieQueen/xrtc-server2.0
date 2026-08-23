@@ -33,4 +33,10 @@ void VideoSendStream::SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp) {
     rtp_rtcp_->SetSrInfo(rtp_timestamp, ntp);
 }
 
+std::unique_ptr<webrtc::RtpPacketToSend> VideoSendStream::BuildRtxPacket(
+        const webrtc::RtpPacketToSend& packet)
+{
+    return nullptr;
+}
+
 } // namespace xrtc

@@ -639,8 +639,22 @@ int PeerConnection::SendPacket(webrtc::MediaType media_type,
             return -1;
         }
 
-        ret = SendRtp((const char*)packet.data(), packet.size());
-        video_send_stream_->UpdateRtpStat(clock_->TimeInMilliseconds(), packet);
+        if (webrtc::RtpPacketMediaType::kRetransmission == packet.packet_type()) {
+            // 构造rtx的数据包
+            std::unique_ptr<webrtc::RtpPacketToSend> rtx_packet = 
+                video_send_stream_->BuildRtxPacket(packet);
+            if (!rtx_packet) {
+                return -1;
+            }
+
+            ret = SendRtp((const char*)rtx_packet->data(), rtx_packet->size());
+            video_send_stream_->UpdateRtpStat(clock_->TimeInMilliseconds(), *rtx_packet);
+
+        } else {
+            ret = SendRtp((const char*)packet.data(), packet.size());
+            video_send_stream_->UpdateRtpStat(clock_->TimeInMilliseconds(), packet);
+        }
+
     }
 
     return ret;

@@ -14,6 +14,8 @@ public:
     void DeliverRtcp(const uint8_t* data, size_t len);
     void UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet);
     void SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp);
+    std::unique_ptr<webrtc::RtpPacketToSend> BuildRtxPacket(
+            const webrtc::RtpPacketToSend& packet);
 
 private:
     VideoSendStreamConfig config_;
