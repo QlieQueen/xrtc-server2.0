@@ -26,6 +26,7 @@ PullStream::PullStream(EventLoop* el, PortAllocator* allocator,
         bool audio, bool video, uint32_t log_id) :
     RtcStream(el, allocator, uid, stream_name, audio, video, log_id)
 {
+    pc->SignalNackReceived.connect(this, &PullStream::OnNackReceived);
 }
 
 PullStream::~PullStream() {
@@ -75,6 +76,14 @@ int PullStream::SendPacket(webrtc::MediaType media_type, const uint8_t* buf,
     }
 
     return pc->SendPacket(media_type, send_packet);
+}
+
+void PullStream::OnNackReceived(PeerConnection*, webrtc::MediaType media_type,
+        const std::vector<uint16_t>& nack_list)
+{
+    if (listener_) {
+        listener_->OnNackReceived(this, media_type, nack_list);
+    }
 }
 
 } // namespace xrtc

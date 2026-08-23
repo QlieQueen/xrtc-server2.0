@@ -752,6 +752,12 @@ void PeerConnection::SetSrInfo(webrtc::MediaType media_type,
     }
 }
 
+void PeerConnection::OnNackReceived(webrtc::MediaType media_type,
+        const std::vector<uint16_t>& nack_list)
+{
+    SignalNackReceived(this, media_type, nack_list);
+}
+
 } // namespace xrtc
 
 

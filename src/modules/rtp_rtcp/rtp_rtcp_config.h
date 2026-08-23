@@ -21,6 +21,8 @@ public:
     virtual void OnFrame(std::unique_ptr<RtpFrameObject> frame) = 0;
     virtual void OnSrInfo(webrtc::MediaType media_type,
             uint32_t rtp_timestamp, webrtc::NtpTime ntp) = 0;
+    virtual void OnNackReceived(webrtc::MediaType media_type,
+            const std::vector<uint16_t>& nack_list) = 0;
 };
 
 struct RtpRtcpConfig {

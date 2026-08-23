@@ -80,6 +80,8 @@ public:
             const webrtc::RtpPacketReceived& packetr) override;
     void OnSrInfo(RtcStream* stream, webrtc::MediaType media_type,
                 uint32_t rtp_timestamp, webrtc::NtpTime ntp);
+    void OnNackReceived(RtcStream*, webrtc::MediaType media_type,
+            const std::vector<uint16_t>& nack_list) override;
 
     void OnStreamException(RtcStream* stream) override;
 

@@ -98,7 +98,9 @@ public:
 
     sigslot::signal4<PeerConnection*, webrtc::MediaType, uint32_t, webrtc::NtpTime>
         SignalSrInfo;
-
+    sigslot::signal3<PeerConnection*, webrtc::MediaType, const std::vector<uint16_t>&>
+        SignalNackReceived;
+        
 private:
     ~PeerConnection();
     void OnCandidateAllocateDone(TransportController* transport_controller,
@@ -111,6 +113,7 @@ private:
             rtc::CopyOnWriteBuffer* packet, int64_t ts);
     void OnRtcpPacketReceived(TransportController*,
             rtc::CopyOnWriteBuffer* packet, int64_t ts);
+    // RtpRtcpModuleObserver
      void OnRtpPacket(webrtc::MediaType media_type,
             const webrtc::RtpPacketReceived& packet) override;
     void OnLocalRtcpPacket(webrtc::MediaType media_type,
@@ -118,6 +121,8 @@ private:
     void OnFrame(std::unique_ptr<RtpFrameObject> frame) override;
     void OnSrInfo(webrtc::MediaType media_type,
             uint32_t rtp_timestamp, webrtc::NtpTime ntp) override;
+    void OnNackReceived(webrtc::MediaType media_type,
+            const std::vector<uint16_t>& nack_list) override;
 
     webrtc::MediaType GetMediaType(uint32_t ssrc) const;
     void CreateVideoReceiveStream(VideoContentDescription* video_content);

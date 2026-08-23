@@ -14,6 +14,7 @@ struct RTCPReceiver::PacketInformation {
 RTCPReceiver::RTCPReceiver(const RtpRtcpConfig& config) :
     clock_(config.clock),
     audio_(config.audio),
+    main_ssrc_(config.local_media_ssrc),
     rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer)
 {
 
@@ -197,7 +198,21 @@ void RTCPReceiver::HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,
 void RTCPReceiver::HandleNack(const webrtc::rtcp::CommonHeader& rtcp_block,
             PacketInformation* packet_information)
 {
+    webrtc::rtcp::Nack nack;
+    if (!nack.Parse(rtcp_block)) {
+        ++num_skipped_packet_;
+        return;
+    }
 
+    if (main_ssrc_ != nack.media_ssrc()) {
+        return;
+    }
+
+    if (rtp_rtcp_module_observer_) {
+        rtp_rtcp_module_observer_->OnNackReceived(
+                audio_ ? webrtc::MediaType::AUDIO : webrtc::MediaType::VIDEO,
+                nack.packet_ids());
+    }
 }
 
 } // namespace xrtc

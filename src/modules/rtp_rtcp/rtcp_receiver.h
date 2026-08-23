@@ -47,6 +47,7 @@ private:
     int num_skipped_packet_ = 0;
     // 远端(发送端)媒体流SSRC, 由 SetRemoteSsrc 设置, 用于过滤SR包
     uint32_t remote_ssrc_ = 0;
+    uint32_t main_ssrc_;
     // 最近一次SR包内的NTP时间戳(发送端时钟读数): 填RR报告块LSR用
     webrtc::NtpTime remote_sender_ntp_time_;
     // 最近一次SR包内的RTP时间戳(与NTP同刻): 时间对齐/RTT计算用

@@ -438,6 +438,13 @@ void RtcStreamManager::OnSrInfo(RtcStream* stream, webrtc::MediaType media_type,
     }
 }
 
+void RtcStreamManager::OnNackReceived(RtcStream*, webrtc::MediaType media_type,
+        const std::vector<uint16_t>& nack_list)
+{
+    RTC_LOG(LS_WARNING) << "============nack size: " << nack_list.size();
+}
+
+
 void RtcStreamManager::OnStreamException(RtcStream* stream) {
     if (RtcStreamType::kPush == stream->stream_type()) {
         RemovePushStream(stream);

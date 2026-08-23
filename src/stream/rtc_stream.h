@@ -50,6 +50,8 @@ public:
     virtual void OnStreamException(RtcStream* stream) = 0;
     virtual void OnSrInfo(RtcStream*, webrtc::MediaType media_type,
             uint32_t rtp_timestamp, webrtc::NtpTime ntp) = 0;
+    virtual void OnNackReceived(RtcStream*, webrtc::MediaType media_type,
+            const std::vector<uint16_t>& nack_list) = 0;
 };
 
 class RtcStream : public sigslot::has_slots<> {

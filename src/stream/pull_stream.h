@@ -41,6 +41,10 @@ public:
 
     void AddAudioSource(const std::vector<StreamParams>& source);
     void AddVideoSource(const std::vector<StreamParams>& source);
+
+private:
+    void OnNackReceived(PeerConnection*, webrtc::MediaType media_type,
+            const std::vector<uint16_t>& nack_list);
 };
 
 } // namespace xrtc
