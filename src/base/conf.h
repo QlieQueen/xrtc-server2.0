@@ -36,6 +36,10 @@ struct GeneralConf {
     std::string ipv4_addr;
     // RTCP周期上报间隔(ms), RtpRtcpImpl创建定时器时使用, 默认100ms
     int rtcp_report_timer_interval = 100;
+    // XR扩展报告开关: 非发送端(收流侧)发RRTR/解析DLRR测RTT, 默认false
+    bool enable_xr = false;
+    // PLI关键帧请求周期(ms), is_pli开启时定时发PLI, 默认2000ms
+    int request_pli_interval_ms = 2000;
 };
 
 int LoadGeneralConf(const char* filename, GeneralConf* conf);

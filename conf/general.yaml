@@ -14,3 +14,7 @@ ice:
 rtp_rtcp:
     # 单位ms
     rtcp_report_timer_interval: 100
+    # XR扩展报告(RRTR/DLRR)开关: 非发送端(收流侧)测RTT, true/false
+    enable_xr: true
+    # PLI关键帧请求周期(ms), is_pli开启时定时发PLI
+    request_pli_interval_ms: 2000

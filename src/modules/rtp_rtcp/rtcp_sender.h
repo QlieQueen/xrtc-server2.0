@@ -74,6 +74,7 @@ private:
     void BuildRR(const RtcpContext& ctx, PacketSender& sender);
     void BuildNack(const RtcpContext& ctx, PacketSender& sender);
     void BuildPli(const RtcpContext& ctx, PacketSender& sender);
+    void BuildXr(const RtcpContext& ctx, PacketSender& sender);
 
 private:
     webrtc::Clock* clock_;
@@ -121,6 +122,8 @@ private:
 
     uint32_t latest_rtp_timestamp_ = 0;
     webrtc::NtpTime latest_ntp_;
+
+    bool enable_xr_;
 };
 
 } // namespace xrtc

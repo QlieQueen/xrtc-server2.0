@@ -49,6 +49,11 @@ int LoadGeneralConf(const char* filename, GeneralConf* conf) {
         // RTCP周期上报间隔(ms), 供RtpRtcpImpl的周期定时器使用
         conf->rtcp_report_timer_interval =
                 config["rtp_rtcp"]["rtcp_report_timer_interval"].as<int>();
+        // XR扩展报告开关, 缺省false(优雅兜底, 老配置无此key也能起服务)
+        conf->enable_xr = config["rtp_rtcp"]["enable_xr"].as<bool>(false);
+        // PLI关键帧请求周期(ms), 缺省2000
+        conf->request_pli_interval_ms =
+                config["rtp_rtcp"]["request_pli_interval_ms"].as<int>(2000);
     } catch (const YAML::Exception& e) {
         fprintf(stderr, "catch a YAML::Exception, line: %d, column: %d"
                 ", error:%s\n", e.mark.line + 1, e.mark.column + 1, e.msg.c_str());

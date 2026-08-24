@@ -26,6 +26,8 @@ public:
         uint32_t remote_ssrc = 0;
         uint32_t rtx_ssrc = 0;
         std::map<int, int> rtx_associated_payload_types;
+
+        bool enable_xr = false;
     } rtp;
 
     RtpRtcpModuleObserver* rtp_rtcp_module_observer = nullptr;

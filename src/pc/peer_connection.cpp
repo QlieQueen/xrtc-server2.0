@@ -26,6 +26,9 @@
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
 
 #include "ice/ice_credentials.h"
+#include "base/conf.h"
+
+extern xrtc::GeneralConf* g_conf;
 
 namespace xrtc {
 
@@ -572,6 +575,7 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
             // 远端视频主SSRC(从SDP的a=ssrc解析): RTCP接收解析SR时过滤用
             config.rtp.remote_ssrc = remote_video_ssrc_;
             config.rtp.rtx_ssrc = remote_video_rtx_ssrc_;
+            config.rtp.enable_xr = g_conf->enable_xr; // 由 conf/general.yaml 的 rtp_rtcp.enable_xr 配置
             for (auto codec : video_content->codecs()) {
                 auto it = codec->codec_param.find("apt");
                 if (it != codec->codec_param.end()) {
@@ -581,7 +585,7 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
 
             config.rtp_rtcp_module_observer = this;
             if (is_pli_) {
-                config.request_pli_interval_ms = 2000;  // TODO: PLI请求间隔，后续可以修改成配置文件方式进行配置
+                config.request_pli_interval_ms = g_conf->request_pli_interval_ms; // 由 conf/general.yaml 的 rtp_rtcp.request_pli_interval_ms 配置
             }
             video_receive_stream_ = std::make_unique<VideoReceiveStream>(config);
         }

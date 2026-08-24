@@ -12,6 +12,9 @@ namespace xrtc {
 
 namespace {
 
+const int kRtcpAnyExtendedReports = webrtc::kRtcpXrReceiverReferenceTime | 
+                                    webrtc::kRtcpXrDlrrReportBlock;
+
 const int kDefaultAudioReportInterval = 5000;
 const int kDefaultVideoReportInterval = 1000;
 
@@ -77,7 +80,8 @@ RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
                          kDefaultVideoReportInterval)),
     cur_report_interval_ms_(report_interval_ms_ / 2),
     random_(clock_->TimeInMicroseconds()),
-    rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer)
+    rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer),
+    enable_xr_(config.enable_xr)
 {
     // 注册RTCP报文类型对应的构建函数: RR(接收端报告)由BuildRR构建,
     // SR(发送端报告)等其他类型的构建函数在后续课程注册
@@ -85,6 +89,7 @@ RTCPSender::RTCPSender(const RtpRtcpConfig& config) :
     builders_[webrtc::kRtcpRr] = &RTCPSender::BuildRR;
     builders_[webrtc::kRtcpNack] = &RTCPSender::BuildNack;
     builders_[webrtc::kRtcpPli] = &RTCPSender::BuildPli;
+    builders_[kRtcpAnyExtendedReports] = &RTCPSender::BuildXr;
 }
 
 RTCPSender::~RTCPSender() {
@@ -225,6 +230,12 @@ void RTCPSender::PrepareReport() {
         }
     }
 
+    if (generate_report) {
+        if (!sending_ && enable_xr_) {
+            SetFlag(kRtcpAnyExtendedReports, true);
+        }
+    }
+
     uint32_t min_interval = report_interval_ms_;
     cur_report_interval_ms_ = random_.Rand(min_interval * 1 / 2, min_interval * 3 / 2);
 }
@@ -301,6 +312,10 @@ void RTCPSender::BuildPli(const RtcpContext& ctx, PacketSender& sender) {
     pli.SetSenderSsrc(ssrc_);
     pli.SetMediaSsrc(remote_ssrc_);
     sender.AppendPacket(pli);
+}
+
+void RTCPSender::BuildXr(const RtcpContext& ctx, PacketSender& sender) {
+
 }
 
 }

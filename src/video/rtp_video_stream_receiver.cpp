@@ -22,6 +22,7 @@ std::unique_ptr<RtpRtcpImpl> CreateRtpRtcpModule(
     config.receive_stat = receive_stat;
     config.rtp_rtcp_module_observer = vconf.rtp_rtcp_module_observer;
     config.request_pli_interval_ms = vconf.request_pli_interval_ms;
+    config.enable_xr = vconf.rtp.enable_xr;
 
     auto rtp_rtcp = std::make_unique<RtpRtcpImpl>(config);
     rtp_rtcp->SetRtcpStatus(webrtc::RtcpMode::kCompound);

@@ -35,6 +35,7 @@ struct RtpRtcpConfig {
     absl::optional<uint32_t> rtcp_report_interval_ms;
     RtpRtcpModuleObserver* rtp_rtcp_module_observer = nullptr;
     int request_pli_interval_ms = 0;
+    bool enable_xr = false;
 };
 
 } // namespace xrtc
