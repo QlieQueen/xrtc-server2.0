@@ -3,6 +3,7 @@
 #include <rtc_base/logging.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/sender_report.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/extended_reports.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/nack.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/pli.h>
 #include <modules/rtp_rtcp/source/rtp_rtcp_config.h>
@@ -315,7 +316,20 @@ void RTCPSender::BuildPli(const RtcpContext& ctx, PacketSender& sender) {
 }
 
 void RTCPSender::BuildXr(const RtcpContext& ctx, PacketSender& sender) {
+    if (audio_) {
+        return;
+    }
 
+    webrtc::rtcp::ExtendedReports xr;
+    xr.SetSenderSsrc(ssrc_);
+
+    if (!sending_ && enable_xr_) {
+        webrtc::rtcp::Rrtr rrtr;
+        rrtr.SetNtp(clock_->ConvertTimestampToNtpTime(ctx.now_));
+        xr.SetRrtr(rrtr);
+    }
+
+    sender.AppendPacket(xr);
 }
 
 }

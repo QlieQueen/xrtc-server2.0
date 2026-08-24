@@ -3,7 +3,9 @@
 #include <rtc_base/logging.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/sender_report.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/receiver_report.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/extended_reports.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/nack.h>
+#include <modules/rtp_rtcp/source/time_util.h>
 
 namespace xrtc {
 
@@ -15,7 +17,8 @@ RTCPReceiver::RTCPReceiver(const RtpRtcpConfig& config) :
     clock_(config.clock),
     audio_(config.audio),
     main_ssrc_(config.local_media_ssrc),
-    rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer)
+    rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer),
+    enable_xr_(config.enable_xr)
 {
 
 }
@@ -136,6 +139,8 @@ bool RTCPReceiver::ParseCompoundPacket(rtc::ArrayView<const uint8_t> packet,
             case webrtc::rtcp::ReceiverReport::kPacketType:
                 HandleRr(rtcp_block, packet_information);
                 break;
+            case webrtc::rtcp::ExtendedReports::kPacketType:
+                HandleXr(rtcp_block, packet_information);
             case webrtc::rtcp::Rtpfb::kPacketType:
                 switch (rtcp_block.fmt()) {
                     case webrtc::rtcp::Nack::kFeedbackMessageType:
@@ -193,6 +198,40 @@ void RTCPReceiver::HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,
         PacketInformation* packet_information)
 {
 
+}
+
+void RTCPReceiver::HandleXr(const webrtc::rtcp::CommonHeader& rtcp_block,
+        PacketInformation* packet_information)
+{
+    webrtc::rtcp::ExtendedReports xr;
+    if (!xr.Parse(rtcp_block)) {
+        ++num_skipped_packet_;
+        return;
+    }
+
+    for (const webrtc::rtcp::ReceiveTimeInfo time_info : xr.dlrr().sub_blocks()) {
+        HandleXrDlrrReport(xr.sender_ssrc(), time_info);
+    }
+
+}
+
+void RTCPReceiver::HandleXrDlrrReport(uint32_t ssrc,
+        const webrtc::rtcp::ReceiveTimeInfo& rti)
+{
+    if (!enable_xr_) {
+        return;
+    }
+
+    uint32_t send_ntp_time = rti.last_rr;
+    if (0 == send_ntp_time) {
+        return;
+    }
+
+    uint32_t delay_ntp_time = rti.delay_since_last_rr;
+    uint32_t now_ntp = webrtc::CompactNtp(clock_->CurrentNtpTime());
+    uint32_t rtt_ntp = now_ntp - delay_ntp_time - send_ntp_time;
+
+    xr_rr_rtt_ms_ = webrtc::CompactNtpRttToMs(rtt_ntp);
 }
 
 void RTCPReceiver::HandleNack(const webrtc::rtcp::CommonHeader& rtcp_block,

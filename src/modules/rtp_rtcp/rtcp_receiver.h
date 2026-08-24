@@ -3,6 +3,7 @@
 
 #include <api/array_view.h>
 #include <modules/rtp_rtcp/source/rtcp_packet/common_header.h>
+#include <modules/rtp_rtcp/source/rtcp_packet/dlrr.h>
 
 #include "modules/rtp_rtcp/rtp_rtcp_config.h"
 
@@ -38,6 +39,10 @@ private:
             PacketInformation* packet_information);
     void HandleRr(const webrtc::rtcp::CommonHeader& rtcp_block,
             PacketInformation* packet_information);
+    void HandleXr(const webrtc::rtcp::CommonHeader& rtcp_block,
+            PacketInformation* packet_information);
+    void HandleXrDlrrReport(uint32_t ssrc,
+            const webrtc::rtcp::ReceiveTimeInfo& rti);
     void HandleNack(const webrtc::rtcp::CommonHeader& rtcp_block,
             PacketInformation* packet_information);
 
@@ -58,6 +63,8 @@ private:
     uint32_t remote_sender_packet_count_ = 0;
     uint32_t remote_sender_octet_count_ = 0;
     RtpRtcpModuleObserver* rtp_rtcp_module_observer_ = nullptr;
+    bool enable_xr_ = false;
+    int64_t xr_rr_rtt_ms_ = -1;
 };
 
 } // namespace xrtc
