@@ -123,6 +123,7 @@ private:
             uint32_t rtp_timestamp, webrtc::NtpTime ntp) override;
     void OnNackReceived(webrtc::MediaType media_type,
             const std::vector<uint16_t>& nack_list) override;
+    void OnRttUpdate(int64_t rtt_ms) override;
 
     webrtc::MediaType GetMediaType(uint32_t ssrc) const;
     void CreateVideoReceiveStream(VideoContentDescription* video_content);

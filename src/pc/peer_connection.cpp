@@ -785,6 +785,11 @@ void PeerConnection::OnNackReceived(webrtc::MediaType media_type,
     SignalNackReceived(this, media_type, nack_list);
 }
 
-} // namespace xrtc
+// 上行 RTT(SFU↔推流端)上报入口: 当前先打日志观察链路是否走通,
+// 12.x 下行 NACK 节流会在此收集 RttTime 列表、取最大后下发 video_receive_stream
+void PeerConnection::OnRttUpdate(int64_t rtt_ms) {
+    RTC_LOG(LS_WARNING) << "==================rtt_ms: " << rtt_ms;
+}
 
+} // namespace xrtc
 

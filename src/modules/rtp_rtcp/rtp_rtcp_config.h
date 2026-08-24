@@ -23,6 +23,8 @@ public:
             uint32_t rtp_timestamp, webrtc::NtpTime ntp) = 0;
     virtual void OnNackReceived(webrtc::MediaType media_type,
             const std::vector<uint16_t>& nack_list) = 0;
+    // XR(DLRR) 算出上行 RTT 后的上报回调: rtt_ms 供上层 QoS(NACK 节流)使用
+    virtual void OnRttUpdate(int64_t rtt_ms) = 0;
 };
 
 struct RtpRtcpConfig {

@@ -32,6 +32,19 @@ public:
 
 private:
     struct PacketInformation;
+
+    // 本端已注册的 SSRC 名单(本地媒体 + 可选本地 RTX):
+    // 用于过滤 DLRR 子块, 只处理"关于我们"的报告, 忽略无关流的噪声
+    class RegisteredSsrcs {
+    public:
+        RegisteredSsrcs(const RtpRtcpConfig& config);
+
+        bool Contains(uint32_t ssrc);
+    private:
+        std::vector<uint32_t> ssrcs_;
+    };
+
+
     bool ParseCompoundPacket(rtc::ArrayView<const uint8_t> packet,
         PacketInformation *packet_information);
 
@@ -65,6 +78,9 @@ private:
     RtpRtcpModuleObserver* rtp_rtcp_module_observer_ = nullptr;
     bool enable_xr_ = false;
     int64_t xr_rr_rtt_ms_ = -1;
+    // 本端 SSRC 名单: HandleXrDlrrReport 过滤 DLRR 子块用,
+    // 子块 ssrc = 对方从我们 RRTR 头里抄的号(媒体 SSRC = kDefaultVideoSsrc = 1)
+    RegisteredSsrcs register_ssrcs_;
 };
 
 } // namespace xrtc

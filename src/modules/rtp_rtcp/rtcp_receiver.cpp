@@ -13,12 +13,33 @@ struct RTCPReceiver::PacketInformation {
 
 };
 
+// 收集本端已注册 SSRC: 本地媒体号必收, 本地 RTX 号可选收
+// (标准实现下 RTCP 永远用媒体号发, RTX 号只是防御性条目)
+RTCPReceiver::RegisteredSsrcs::RegisteredSsrcs(const RtpRtcpConfig& config)
+{
+    ssrcs_.push_back(config.local_media_ssrc);
+    if (config.rtx_send_ssrc > 0) {
+        ssrcs_.push_back(config.rtx_send_ssrc);
+    }
+}
+
+bool RTCPReceiver::RegisteredSsrcs::Contains(uint32_t ssrc) {
+    for (auto item : ssrcs_) {
+        if (ssrc == item) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 RTCPReceiver::RTCPReceiver(const RtpRtcpConfig& config) :
     clock_(config.clock),
     audio_(config.audio),
     main_ssrc_(config.local_media_ssrc),
     rtp_rtcp_module_observer_(config.rtp_rtcp_module_observer),
-    enable_xr_(config.enable_xr)
+    enable_xr_(config.enable_xr),
+    register_ssrcs_(config)
 {
 
 }
@@ -218,6 +239,12 @@ void RTCPReceiver::HandleXr(const webrtc::rtcp::CommonHeader& rtcp_block,
 void RTCPReceiver::HandleXrDlrrReport(uint32_t ssrc,
         const webrtc::rtcp::ReceiveTimeInfo& rti)
 {
+    // 只处理"关于我们"的 DLRR 子块: rti.ssrc = 对方从我们 RRTR 头里
+    // 抄的号(媒体 SSRC), 别人的报告/无关流一律忽略
+    if (!register_ssrcs_.Contains(rti.ssrc)) {
+        return;
+    }
+
     if (!enable_xr_) {
         return;
     }
@@ -232,6 +259,12 @@ void RTCPReceiver::HandleXrDlrrReport(uint32_t ssrc,
     uint32_t rtt_ntp = now_ntp - delay_ntp_time - send_ntp_time;
 
     xr_rr_rtt_ms_ = webrtc::CompactNtpRttToMs(rtt_ntp);
+
+    // 上报 RTT 给上层(PC): 供下行 NACK 节流等 QoS 策略使用,
+    // 当前 PC 侧只打日志观察, 12.x 会在此做记录/取最大后下发
+    if (rtp_rtcp_module_observer_) {
+        rtp_rtcp_module_observer_->OnRttUpdate(xr_rr_rtt_ms_);
+    }
 }
 
 void RTCPReceiver::HandleNack(const webrtc::rtcp::CommonHeader& rtcp_block,
