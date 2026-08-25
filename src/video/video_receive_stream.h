@@ -18,6 +18,7 @@ public:
     void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
     // 收到RTCP数据: 转给内部接收器, 最终由RTCP模块解析
     void DeliverRtcp(const uint8_t* data, size_t len);
+    void OnRttUpdate(int64_t max_rtt_time_ms);
 
 private:
     VideoReceiveStreamConfig config_;

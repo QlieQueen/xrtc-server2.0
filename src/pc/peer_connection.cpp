@@ -785,10 +785,37 @@ void PeerConnection::OnNackReceived(webrtc::MediaType media_type,
     SignalNackReceived(this, media_type, nack_list);
 }
 
-// 上行 RTT(SFU↔推流端)上报入口: 当前先打日志观察链路是否走通,
-// 12.x 下行 NACK 节流会在此收集 RttTime 列表、取最大后下发 video_receive_stream
+static void RemoveOldReport(int64_t now, std::list<RttTime>* reports) {
+    static const int64_t kRttTimeoutMs = 1500;    
+    reports->remove_if([&now](RttTime& item) {
+        return now - item.time > kRttTimeoutMs;
+    });
+}
+
+static int64_t GetMaxRttTimeMs(const std::list<RttTime>& reports) {
+    int64_t max_rtt_time_ms = -1;
+    for (auto item : reports) {
+        if (item.rtt_ms > max_rtt_time_ms) {
+            max_rtt_time_ms = item.rtt_ms;
+        }
+    }
+
+    return max_rtt_time_ms;
+}
+
+// 上行 RTT(SFU↔推流端)上报入口: 收集 1500ms 窗口内 RTT 取最大值,
+// 下发 video_receive_stream → NackRequester 作重传间隔(宁大勿小, 防抖动)
 void PeerConnection::OnRttUpdate(int64_t rtt_ms) {
     RTC_LOG(LS_WARNING) << "==================rtt_ms: " << rtt_ms;
+    int64_t now = clock_->TimeInMilliseconds();
+    rtt_reports_.push_back(RttTime(now, rtt_ms));
+
+    RemoveOldReport(now, &rtt_reports_); // 超过当前1500ms的rtt数据丢弃
+    int64_t max_rtt_time_ms = GetMaxRttTimeMs(rtt_reports_);
+
+    if (video_receive_stream_) {
+        video_receive_stream_->OnRttUpdate(max_rtt_time_ms);
+    }
 }
 
 } // namespace xrtc

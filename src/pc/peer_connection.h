@@ -35,6 +35,14 @@
 
 namespace xrtc {
 
+struct RttTime {
+    RttTime(int64_t time, int64_t rtt_ms) : 
+        time(time), rtt_ms(rtt_ms) {}
+
+    int64_t time;
+    int64_t rtt_ms;
+};
+
 struct RTCOfferAnswerOptions {
     bool send_audio = true;
     bool send_video = true;
@@ -155,6 +163,8 @@ private:
 
     std::unique_ptr<VideoReceiveStream> video_receive_stream_;
     std::unique_ptr<VideoSendStream> video_send_stream_;
+
+    std::list<RttTime> rtt_reports_;
 };
 
 } // namespace xrtc

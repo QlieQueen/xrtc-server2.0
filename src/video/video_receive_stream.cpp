@@ -36,4 +36,8 @@ void VideoReceiveStream::DeliverRtcp(const uint8_t* data, size_t len) {
     rtp_video_stream_receiver_.DeliverRtcp(data, len);
 }
 
+void VideoReceiveStream::OnRttUpdate(int64_t max_rtt_time_ms) {
+    rtp_video_stream_receiver_.UpdateRtt(max_rtt_time_ms);
+}
+
 } // namespace xrtc

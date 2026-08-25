@@ -29,6 +29,7 @@ public:
     void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
     // 收到RTCP数据: 转给RTCP模块(RtpRtcpImpl)解析
     void DeliverRtcp(const uint8_t* data, size_t len);
+    void UpdateRtt(int64_t max_rtt_ms);
 
 private:
     void ReceivePacket(const webrtc::RtpPacketReceived& packet);

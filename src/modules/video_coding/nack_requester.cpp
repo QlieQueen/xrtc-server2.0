@@ -40,6 +40,11 @@ NackRequester::~NackRequester() {
     }
 }
 
+void NackRequester::UpdateRtt(int64_t rtt_ms) {
+    rtt_ms_ = rtt_ms;
+    RTC_LOG(LS_WARNING) << "======================nack rtt: " << rtt_ms_;
+}
+
 void NackRequester::ProcessNacks() {
     // 定时触发: 重传过的包按 RTT 退避再次点名(send_at_time 已置位的包)
     auto nack_batch = GetNackBatch(kTimeOnly);

@@ -22,7 +22,7 @@ public:
     // 定时器入口: 周期触发 kTimeOnly 重传(RTT 退避点名)
     void ProcessNacks();
     // 外部喂入实测 RTT(重传间隔依据; 当前无人调用, 用默认 100ms)
-    void UpdateRtt(int64_t rtt_ms) { rtt_ms_ = rtt_ms; }
+    void UpdateRtt(int64_t rtt_ms);
 
     // 返回某序号包的重传次数(times_nacked, 流入 Packet::times_nacked)
     // 旧包分支返回: 重传补到 → 该包被重传过几次; 纯乱序 → 0

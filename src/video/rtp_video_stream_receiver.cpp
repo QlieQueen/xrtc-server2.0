@@ -167,4 +167,10 @@ void RtpVideoStreamReceiver::DeliverRtcp(const uint8_t* data, size_t len) {
     rtp_rtcp_->IncomingRtcpPacket(data, len);
 }
 
+void RtpVideoStreamReceiver::UpdateRtt(int64_t max_rtt_ms) {
+    if (nack_module_) {
+        nack_module_->UpdateRtt(max_rtt_ms);
+    } 
+}
+
 } // namespace xrtc
