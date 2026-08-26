@@ -101,10 +101,55 @@ void PushStream::OnRtpPacket(PeerConnection*, webrtc::MediaType media_type,
             packet.arrival_time().ms(),
             packet.data(), packet.size());
 
-    CacheVideoPacket(new_packet);
+    if (webrtc::MediaType::VIDEO == media_type) {
+        ProcessVideoPacket(new_packet);
+    } else {
+        if (listener_) {
+            listener_->OnRtpPacket(this, webrtc::MediaType::AUDIO, new_packet);
+        }
+    }
+}
 
-    if (listener_) {
-        listener_->OnRtpPacket(this, media_type, new_packet);
+void PushStream::ProcessVideoPacket(std::shared_ptr<RtcPacket> packet) {
+    // 1. 缓存rtp packet，用于重传
+    CacheVideoPacket(packet);
+
+    // 2. rtp包的连续性控制，如果当前的rtp包不连续，暂时不转发
+    uint16_t seq_num = packet->seq_num;
+    if (-1 == first_seq_time_) {  // 收到第一个包
+        video_seq_ = packet->seq_num;
+        first_seq_time_ = packet->ts;
+        if (listener_) {
+            listener_->OnRtpPacket(this, webrtc::MediaType::VIDEO, packet);
+        }
+        return;
+    }
+
+    // 期待的下一个包的序列号
+    uint16_t expected_seq_num = video_seq_ + 1;
+
+    if (webrtc::AheadOrAt(video_seq_, seq_num)) { // 重复的包
+        return;
+    } else if (seq_num != expected_seq_num) { // 发生了丢包或者乱序
+        return;
+    } else { // 正常有序的包
+        int test_size = 0;
+
+        do {
+            ++test_size;
+            auto video_packet = FindVideoPacket(seq_num);
+            if (!video_packet) {
+                break;
+            }
+
+            if (listener_) {
+                listener_->OnRtpPacket(this, webrtc::MediaType::VIDEO, video_packet);
+            }
+            seq_num++;
+
+        } while (test_size <= kVideoPacketCacheSize);
+
+        video_seq_ = seq_num - 1;
     }
 }
 

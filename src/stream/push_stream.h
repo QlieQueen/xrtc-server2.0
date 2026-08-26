@@ -55,11 +55,15 @@ private:
     void OnRtpPacket(PeerConnection*, webrtc::MediaType media_type,
             const webrtc::RtpPacketReceived& packet);
     void CacheVideoPacket(std::shared_ptr<RtcPacket> packet);
+    void ProcessVideoPacket(std::shared_ptr<RtcPacket> packet);
 
     bool GetSource(const std::string& mid, std::vector<StreamParams>& source);
 
 private:
     std::vector<std::shared_ptr<RtcPacket>> video_data_buffer_;
+
+    uint16_t video_seq_ = 0; // 当前连续的最大的包序列号
+    int64_t first_seq_time_ = -1;
 };
 
 } // namespace xrtc
