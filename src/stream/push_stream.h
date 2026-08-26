@@ -37,7 +37,7 @@ const int kVideoPacketCacheSize = 2048;
 
 class PushStream : public RtcStream {
 public:
-    PushStream(EventLoop* el, PortAllocator* allocator, uint64_t uid, 
+    PushStream(EventLoop* el, PortAllocator* allocator, uint64_t uid,
             const std::string& stream_name,
             bool audio, bool video, uint32_t log_id);
     ~PushStream() override;
@@ -55,7 +55,9 @@ private:
     void OnRtpPacket(PeerConnection*, webrtc::MediaType media_type,
             const webrtc::RtpPacketReceived& packet);
     void CacheVideoPacket(std::shared_ptr<RtcPacket> packet);
+    void ClearVideoPacketCache(uint16_t start_seq, uint16_t end_seq);
     void ProcessVideoPacket(std::shared_ptr<RtcPacket> packet);
+    void OnFrame(PeerConnection*, RtpFrameObject* frame);
 
     bool GetSource(const std::string& mid, std::vector<StreamParams>& source);
 

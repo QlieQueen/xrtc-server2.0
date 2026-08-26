@@ -654,7 +654,7 @@ int PeerConnection::SendPacket(webrtc::MediaType media_type,
 
         if (webrtc::RtpPacketMediaType::kRetransmission == packet.packet_type()) {
             // 构造rtx的数据包
-            std::unique_ptr<webrtc::RtpPacketToSend> rtx_packet = 
+            std::unique_ptr<webrtc::RtpPacketToSend> rtx_packet =
                 video_send_stream_->BuildRtxPacket(packet);
             if (!rtx_packet) {
                 return -1;
@@ -761,6 +761,7 @@ void PeerConnection::OnFrame(std::unique_ptr<RtpFrameObject> frame) {
     RTC_LOG(LS_WARNING) << "============new frame, frame type: " << frame->frame_type()
         << ", [" << frame->first_seq_num() << ", " << frame->last_seq_num() << "]";
     */
+    SignalFrame(this, frame.get());
 }
 
 void PeerConnection::OnSrInfo(webrtc::MediaType media_type,

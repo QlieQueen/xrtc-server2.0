@@ -108,6 +108,8 @@ public:
         SignalSrInfo;
     sigslot::signal3<PeerConnection*, webrtc::MediaType, const std::vector<uint16_t>&>
         SignalNackReceived;
+    sigslot::signal2<PeerConnection*, RtpFrameObject*>
+        SignalFrame;
         
 private:
     ~PeerConnection();

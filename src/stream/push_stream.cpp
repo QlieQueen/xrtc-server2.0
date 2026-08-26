@@ -28,6 +28,7 @@ PushStream::PushStream(EventLoop* el, PortAllocator* allocator,
     video_data_buffer_(kVideoPacketCacheSize)
 {
     pc->SignalRtpPacket.connect(this, &PushStream::OnRtpPacket);
+    pc->SignalFrame.connect(this, &PushStream::OnFrame);
 }
 
 PushStream::~PushStream() {
@@ -150,6 +151,62 @@ void PushStream::ProcessVideoPacket(std::shared_ptr<RtcPacket> packet) {
         } while (test_size <= kVideoPacketCacheSize);
 
         video_seq_ = seq_num - 1;
+    }
+}
+
+void PushStream::OnFrame(PeerConnection*, RtpFrameObject* frame) {
+    if (!frame || frame->frame_type() != webrtc::VideoFrameType::kVideoFrameKey) {
+        return;
+    }
+
+    // 此时表明收到了完整的I帧
+    uint16_t start_seq_num = frame->first_seq_num();
+    RTC_LOG(LS_WARNING) << "received H.264-IDR frame, seq_range[" << start_seq_num
+        << ", " << frame->last_seq_num() << "], video_seq_: " << video_seq_
+        << ", ahead: " << (webrtc::AheadOf(start_seq_num, video_seq_) ? "true" : "false");
+
+    // 最新的I帧第一个包的序列号大于当前收到的最大的连续的序列号
+    if (webrtc::AheadOf(start_seq_num, video_seq_)) {
+        // 从最新的I帧位置开始发送数据
+        int test_size = 0;
+        uint16_t cur_seq = start_seq_num;
+        uint16_t last_fwd = start_seq_num;
+        do {
+            test_size++;
+
+            auto video_packet = FindVideoPacket(cur_seq);
+            if (!video_packet) {
+                RTC_LOG(LS_WARNING) << "IDR restart forward break at seq: " << cur_seq
+                    << ", forwarded: " << (int)(cur_seq - start_seq_num) << " packets";
+                break;
+            }
+
+            if (listener_) {
+                listener_->OnRtpPacket(this, webrtc::MediaType::VIDEO, video_packet);
+            }
+            last_fwd = cur_seq;
+
+            ++cur_seq;
+
+        } while (test_size <= kVideoPacketCacheSize);
+        RTC_LOG(LS_WARNING) << "IDR restart done, last_fwd: " << last_fwd;
+
+        // 清除这个[video_seq_ + 1, start_seq_num - 1]范围的缓存，这样可以避免重传
+        // 防止拉流端的过时重传请求找到缓存包（非常重要）
+        ClearVideoPacketCache(video_seq_ + 1, start_seq_num - 1);
+
+        video_seq_ = cur_seq - 1;
+    }
+
+}
+
+void PushStream::ClearVideoPacketCache(uint16_t start_seq, uint16_t end_seq) {
+    int test_size = 0;
+    while (webrtc::AheadOrAt(end_seq, start_seq) && test_size <= kVideoPacketCacheSize) {
+        int index = start_seq % kVideoPacketCacheSize;
+        video_data_buffer_[index] = nullptr;
+        ++start_seq;
+        ++test_size;
     }
 }
 
