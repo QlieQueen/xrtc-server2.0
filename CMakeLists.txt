@@ -26,6 +26,7 @@ file(GLOB all_src
     "./src/stream/*.cpp"
     "./src/pc/*.cpp"
     "./src/ice/*.cpp"
+    "./src/audio/*.cpp"
     "./src/video/*.cpp"
     "./src/modules/rtp_rtcp/*.cpp"
     "./src/modules/video_coding/*.cpp"
