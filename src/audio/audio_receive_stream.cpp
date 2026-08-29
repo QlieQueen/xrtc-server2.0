@@ -11,6 +11,10 @@ AudioReceiveStream::AudioReceiveStream(const AudioReceiveStreamConfig& config) :
 
 AudioReceiveStream::~AudioReceiveStream() {
 
-}    
+}
+
+void AudioReceiveStream::OnRtpPacket(const webrtc::RtpPacketReceived& packet) {
+    channel_receive_->OnRtpPacket(packet);
+}
 
 } // namespace xrtc

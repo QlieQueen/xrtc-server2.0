@@ -13,6 +13,8 @@ public:
     AudioReceiveStream(const AudioReceiveStreamConfig& config);
     ~AudioReceiveStream();
 
+    void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
+
 private:
     AudioReceiveStreamConfig config_;
     std::unique_ptr<ChannelReceive> channel_receive_;

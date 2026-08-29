@@ -7,10 +7,13 @@
 
 namespace xrtc {
 
+class RtpRtcpModuleObserver;
+
 class AudioReceiveStreamConfig {
 public:
     EventLoop* el = nullptr;
     webrtc::Clock* clock = nullptr;
+    RtpRtcpModuleObserver* rtp_rtcp_module_observer = nullptr;
 };
 
 } // namespace xrtc

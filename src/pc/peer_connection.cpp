@@ -148,6 +148,11 @@ void PeerConnection::OnRtpPacketReceived(TransportController*,
             if (video_receive_stream_) {
                 video_receive_stream_->OnRtpPacket(parsed_packet);
             }
+        } else if (packet_type == webrtc::MediaType::AUDIO) {
+            parsed_packet.set_payload_type_frequency(audio_clockrate_);
+            if (audio_receive_stream_) {
+                audio_receive_stream_->OnRtpPacket(parsed_packet);
+            }
         }
     } else {
         SignalRtpPacketReceived(this, packet, ts);
@@ -552,10 +557,36 @@ int PeerConnection::SetRemoteSdp(const std::string& sdp) {
 
     if (IsLive()) {
         CreateVideoReceiveStream(video_content.get());
+        CreateAudioReceiveStream(audio_content.get());
     }
    
     transport_controller_->SetRemoteDescription(remote_desc_.get());
     return 0;
+}
+
+void PeerConnection::CreateAudioReceiveStream(AudioContentDescription* audio_content) {
+    // 按照系统的推拉流原子设计原则，一个peerconnection只允许推一个或者拉一个音频
+    for (auto send_stream : audio_content->streams()) {
+        uint32_t ssrc = send_stream.FirstSsrc();
+        if (ssrc != 0) {
+            remote_audio_ssrc_ = ssrc;
+
+            AudioReceiveStreamConfig config;
+            config.el = el_;
+            config.clock = clock_;
+            //config.rtp.local_ssrc = kDefaultAudioSsrc;
+            //config.rtp.remote_ssrc = remote_audio_ssrc_;
+            for (auto codec : audio_content->codecs()) {
+                audio_clockrate_ = codec->clockrate;
+                break;
+            }
+
+            config.rtp_rtcp_module_observer = this;
+            audio_receive_stream_ = std::make_unique<AudioReceiveStream>(config);
+        }
+        
+        break;
+    }
 }
 
 void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_content) {
