@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "modules/rtp_rtcp/receive_stat.h"
 #include "audio/audio_receive_stream_config.h"
 #include "audio/channel_receive.h"
 
@@ -14,9 +15,11 @@ public:
     ~AudioReceiveStream();
 
     void OnRtpPacket(const webrtc::RtpPacketReceived& packet);
+    void DeliverRtcp(const uint8_t* data, size_t len);
 
 private:
     AudioReceiveStreamConfig config_;
+    std::unique_ptr<ReceiveStat> rtp_receive_stat_;
     std::unique_ptr<ChannelReceive> channel_receive_;
 };
 

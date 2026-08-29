@@ -34,6 +34,7 @@ namespace xrtc {
 
 namespace {
 
+const uint32_t kDefaultAudioSsrc = 0xFA17FA17u;
 const uint32_t kDefaultVideoSsrc = 1;  // RR包中的 SSRC of packet Sender
 
 } // namespace
@@ -170,6 +171,10 @@ void PeerConnection::OnRtcpPacketReceived(TransportController*,
         rtc::CopyOnWriteBuffer* packet, int64_t ts)
 {
     if (IsLive()) {
+        if (audio_receive_stream_) {
+            audio_receive_stream_->DeliverRtcp(packet->data(), packet->size());
+        }
+
         // 收到的RTCP包直接投递给视频接收流, 由RTCPReceiver解析(4.13起走这条链路);
         // 原SignalRtcpPacketReceived信号链路暂保留
         if (video_receive_stream_) {
@@ -574,8 +579,8 @@ void PeerConnection::CreateAudioReceiveStream(AudioContentDescription* audio_con
             AudioReceiveStreamConfig config;
             config.el = el_;
             config.clock = clock_;
-            //config.rtp.local_ssrc = kDefaultAudioSsrc;
-            //config.rtp.remote_ssrc = remote_audio_ssrc_;
+            config.rtp.local_ssrc = kDefaultAudioSsrc;
+            config.rtp.remote_ssrc = remote_audio_ssrc_;
             for (auto codec : audio_content->codecs()) {
                 audio_clockrate_ = codec->clockrate;
                 break;
