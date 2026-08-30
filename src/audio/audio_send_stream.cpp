@@ -11,4 +11,8 @@ AudioSendStream::~AudioSendStream() {
 
 }
 
+void AudioSendStream::UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet) {
+
+}
+
 } // namespace 

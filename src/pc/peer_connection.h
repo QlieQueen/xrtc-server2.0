@@ -31,6 +31,7 @@
 #include "pc/transport_controller.h"
 #include "pc/stream_params.h"
 #include "audio/audio_receive_stream.h"
+#include "audio/audio_send_stream.h"
 #include "video/video_receive_stream.h"
 #include "video/video_send_stream.h"
 
@@ -139,6 +140,7 @@ private:
     webrtc::MediaType GetMediaType(uint32_t ssrc) const;
     void CreateAudioReceiveStream(AudioContentDescription* audio_content);
     void CreateVideoReceiveStream(VideoContentDescription* video_content);
+    void CreateAudioSendStream(AudioContentDescription* audio_content);
     void CreateVideoSendStream(VideoContentDescription* video_content);
     
     friend void DestroyTimerCb(EventLoop* el, TimerWatcher* w, void* data);
@@ -167,6 +169,7 @@ private:
     uint32_t local_video_rtx_ssrc_ = 0;
 
     std::unique_ptr<AudioReceiveStream> audio_receive_stream_;
+    std::unique_ptr<AudioSendStream> audio_send_stream_;
     std::unique_ptr<VideoReceiveStream> video_receive_stream_;
     std::unique_ptr<VideoSendStream> video_send_stream_;
 

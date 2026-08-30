@@ -238,6 +238,8 @@ std::string PeerConnection::CreateOffer(const RTCOfferAnswerOptions& options) {
             for (auto stream : audio_source_) {
                 audio->add_stream(stream);
             }
+
+            CreateAudioSendStream(audio.get());
         }
     }
 
@@ -630,6 +632,23 @@ void PeerConnection::CreateVideoReceiveStream(VideoContentDescription* video_con
     }
 }
 
+void PeerConnection::CreateAudioSendStream(AudioContentDescription* audio_content) {
+    for (auto send_stream : audio_content->streams()) {
+        uint32_t ssrc = send_stream.FirstSsrc();
+        if (ssrc != 0) {
+            local_audio_ssrc_ = ssrc;
+
+            AudioSendStreamConfig config;
+            config.el = el_;
+            config.clock = clock_;
+            config.rtp_rtcp_module_observer = this;
+            config.rtp.local_ssrc = local_audio_ssrc_;
+
+            audio_send_stream_ = std::make_unique<AudioSendStream>(config);
+        }
+    }
+}
+
 void PeerConnection::CreateVideoSendStream(VideoContentDescription* video_content) {
     for (auto send_stream : video_content->streams()) {
         uint32_t ssrc = send_stream.FirstSsrc();
@@ -704,6 +723,13 @@ int PeerConnection::SendPacket(webrtc::MediaType media_type,
             video_send_stream_->UpdateRtpStat(clock_->TimeInMilliseconds(), packet);
         }
 
+    } else if (media_type == webrtc::MediaType::AUDIO) {
+        if (!audio_send_stream_) {
+            return -1;
+        }
+    
+        ret = SendRtp((const char*)packet.data(), packet.size());
+        audio_send_stream_->UpdateRtpStat(clock_->TimeInMilliseconds(), packet);
     }
 
     return ret;
