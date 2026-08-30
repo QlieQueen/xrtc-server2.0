@@ -839,6 +839,10 @@ void PeerConnection::SetSrInfo(webrtc::MediaType media_type,
         if (video_send_stream_) {
             video_send_stream_->SetSrInfo(rtp_timestamp, ntp);
         }
+    } else if (webrtc::MediaType::AUDIO == media_type) {
+        if (audio_send_stream_) {
+            audio_send_stream_->SetSrInfo(rtp_timestamp, ntp);
+        }
     }
 }
 

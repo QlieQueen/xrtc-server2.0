@@ -30,6 +30,5 @@ void RtpSender::GetDataCounters(webrtc::StreamDataCounters* rtp_stats,
     *rtx_rtp_stats = rtx_rtp_stats_;
 }
 
-
 } // namespace xrtc
 

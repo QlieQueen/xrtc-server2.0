@@ -5,6 +5,16 @@ namespace xrtc {
 AudioSendStream::AudioSendStream(const AudioSendStreamConfig& config) :
     config_(config)
 {
+    RtpRtcpConfig rr_config;
+    rr_config.el = config.el;
+    rr_config.clock = config.clock;
+    rr_config.local_media_ssrc = config.rtp.local_ssrc;
+    rr_config.rtp_rtcp_module_observer = config.rtp_rtcp_module_observer;
+    rr_config.audio = true;
+
+    rtp_rtcp_ = std::make_unique<RtpRtcpImpl>(rr_config);
+    rtp_rtcp_->SetRtcpStatus(webrtc::RtcpMode::kCompound);
+    rtp_rtcp_->SetSendingStatus(true);
 }
 
 AudioSendStream::~AudioSendStream() {
@@ -12,7 +22,11 @@ AudioSendStream::~AudioSendStream() {
 }
 
 void AudioSendStream::UpdateRtpStat(int64_t now_ms, const webrtc::RtpPacketToSend& packet) {
-
+    rtp_rtcp_->UpdateRtpStat(now_ms, packet);
 }
 
-} // namespace 
+void AudioSendStream::SetSrInfo(uint32_t rtp_timestamp, webrtc::NtpTime ntp) {
+    rtp_rtcp_->SetSrInfo(rtp_timestamp, ntp);
+}
+
+} // namespace xrtc
