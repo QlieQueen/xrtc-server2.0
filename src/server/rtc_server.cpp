@@ -215,6 +215,15 @@ int RtcServer::SendRtcMsg(std::shared_ptr<RtcMsg> msg) {
     return Notify(RTC_MSG);
 }
 
+RtcWorker* RtcServer::GetWorker(uint64_t uid) {
+    if (workers_.size() == 0 || workers_.size() != (size_t)options_.worker_num) {
+        return nullptr;
+    }
+
+    size_t index = uid % options_.worker_num;
+    return workers_[index];
+}
+
 RtcWorker* RtcServer::GetWorker(const std::string& stream_name) {
     if (workers_.size() == 0 || workers_.size() != (size_t)options_.worker_num) {
         return nullptr;
@@ -237,7 +246,16 @@ void RtcServer::ProcessRtcMsg() {
     
     msg->certificate = certificate_.get();
 
-    RtcWorker* worker = GetWorker(msg->stream_name);
+    RtcWorker* worker = nullptr;
+
+    if (msg->cmdno == CMDNO_PULL || msg->cmdno == CMDNO_STOPPULL || 
+            (msg->cmdno == CMDNO_ANSWER && msg->stream_type == "pull"))
+    {
+        worker = GetWorker(msg->uid);
+    } else {
+        worker = GetWorker(msg->stream_name);
+    }
+
     if (worker) {
         worker->SendRtcMsg(msg);
     }

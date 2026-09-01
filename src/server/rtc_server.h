@@ -63,6 +63,7 @@ private:
     void InnerStop();
     void ProcessRtcMsg();
     int CreateWorker(int worker_id);
+    RtcWorker* GetWorker(uint64_t uid);
     RtcWorker* GetWorker(const std::string& stream_name);
     int GenerateAndCheckCertificate();
 
