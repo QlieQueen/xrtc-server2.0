@@ -20,19 +20,31 @@
 #ifndef  __XRTCSERVER_STREAM_RTC_STREAM_MANAGER_H_
 #define  __XRTCSERVER_STREAM_RTC_STREAM_MANAGER_H_
 
+#include <mutex>
 #include <string>
+#include <memory>
 #include <unordered_map>
 
 #include <rtc_base/rtc_certificate.h>
 
 #include "ice/port_allocator.h"
 #include "base/event_loop.h"
+#include "base/lock_free_queue.h"
 #include "stream/rtc_stream.h"
 
 namespace xrtc {
 
 class PushStream;
 class PullStream;
+
+struct ComMsg {
+    int msg_type = -1;
+    int worker_id = -1;
+    uint64_t uid = 0;
+    std::string stream_name;
+    std::vector<StreamParams> audio_source;
+    std::vector<StreamParams> video_source;
+};
 
 // uid -> pull_stream
 typedef std::unordered_map<uint64_t, PullStream*> UserStreamMap;
@@ -43,6 +55,10 @@ class RtcStreamManager : public RtcStreamListener {
 public:
     RtcStreamManager(EventLoop* el);
     ~RtcStreamManager();
+
+    int Init();
+    void ProcessNotify(int type);
+    int Notify(int type);
     
     int CreatePushStream(uint64_t uid,
             const std::string& stream_name,
@@ -100,6 +116,13 @@ private:
 
 private:
     EventLoop* el_;
+    IOWatcher* pipe_watcher_ = nullptr;
+    int notify_send_fd_ = 0;
+    int notify_recv_fd_ = 0;
+
+    LockFreeQueue<std::shared_ptr<ComMsg>> mq_msg_;
+    std::mutex mq_msg_mutex_;
+
     std::unordered_map<std::string, PushStream*> push_streams_;
     // transparent
     std::unordered_map<std::string, PullStream*> pull_streams_;

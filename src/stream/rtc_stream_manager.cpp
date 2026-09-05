@@ -17,6 +17,8 @@
 
 #include "stream/rtc_stream_manager.h"
 
+#include <fcntl.h>
+#include <unistd.h>
 #include <rtc_base/logging.h>
 
 #include "base/conf.h"
@@ -26,6 +28,21 @@
 extern xrtc::GeneralConf* g_conf;
 
 namespace xrtc {
+
+namespace {
+
+void RtcStreamManagerRecvNotify(EventLoop*, IOWatcher*, int fd, int /*events*/, void* data) {
+    int type;
+    if (read(fd, &type, sizeof(type)) != sizeof(int)) {
+        RTC_LOG(LS_WARNING) << "read from rtc stream manager pipe failed";
+        return;
+    }
+
+    RtcStreamManager* mgr = (RtcStreamManager*)data;
+    mgr->ProcessNotify(type);
+}
+
+} // namespace
 
 RtcStreamManager::RtcStreamManager(EventLoop* el) :
     el_(el),
@@ -46,6 +63,38 @@ RtcStreamManager::~RtcStreamManager() {
     }
 
     multi_pull_streams_.clear();
+}
+
+int RtcStreamManager::Init() {
+    int fds[2];
+    if (pipe(fds)) {  // 非0返回值失败
+        RTC_LOG(LS_WARNING) << "create rtc stream manager pipe failed";
+        return -1;
+    }
+
+    notify_recv_fd_ = fds[0];
+    notify_send_fd_ = fds[1];
+
+    fcntl(notify_send_fd_, F_SETFL, fcntl(notify_send_fd_, F_GETFL) | O_NONBLOCK);
+
+    pipe_watcher_ = el_->CreateIOEvent(RtcStreamManagerRecvNotify, this);
+    el_->StartIOEvent(pipe_watcher_, notify_recv_fd_, EventLoop::READ);
+    
+    return 0;
+}
+
+void RtcStreamManager::ProcessNotify(int type) {
+
+}
+
+int RtcStreamManager::Notify(int type) {
+    int written = write(notify_send_fd_, &type, sizeof(type));
+    if (written != sizeof(int)) {
+        RTC_LOG(LS_WARNING) << "write rtc stream manager pipe failed";
+        return -1;
+    }
+
+    return 0;
 }
 
 PushStream* RtcStreamManager::FindPushStream(const std::string& stream_name) {
